@@ -1,0 +1,3059 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#090d16">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="CardLedger">
+  <title>CardLedger - Poker & Card Game Settlement Engine</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            poker: {
+              bg: '#090d16',
+              surface: '#0f172a',
+              card: '#1e293b',
+              border: '#334155',
+              gold: '#f59e0b',
+              accent: '#6366f1',
+              win: '#10b981',
+              loss: '#f43f5e'
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    /* Custom scrollbars & smooth transitions */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+    /* Safe mobile padding */
+    .pb-safe {
+      padding-bottom: env(safe-area-inset-bottom, 1rem);
+    }
+    /* Modal backdrop animation */
+    .modal-backdrop {
+      background-color: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+    }
+    /* Badge animations */
+    @keyframes pulse-subtle {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.85; }
+    }
+    .animate-subtle {
+      animation: pulse-subtle 3s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- ================= TOP HEADER NAVIGATION ================= -->
+  <header class="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        
+        <!-- Brand / Logo -->
+        <div class="flex items-center space-x-3 cursor-pointer" onclick="CardLedger.switchTab('dashboard')">
+          <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-amber-500 p-0.5 shadow-lg shadow-indigo-500/20">
+            <div class="h-full w-full bg-slate-950 rounded-[10px] flex items-center justify-center">
+              <svg class="w-6 h-6 text-amber-400" viewBox="0 0 24 24" fill="currentColor">
+                <!-- Spade Icon -->
+                <path d="M12 2C9.5 7 4 11.5 4 15.5C4 18 6 20 8.5 20C9.8 20 11 19.3 11.7 18.2C11.5 19.5 10.5 21 9 22H15C13.5 21 12.5 19.5 12.3 18.2C13 19.3 14.2 20 15.5 20C18 20 20 18 20 15.5C20 11.5 14.5 7 12 2Z"/>
+              </svg>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <h1 class="text-xl font-black tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+                PattiBaaz
+              </h1>
+              <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 font-medium">v1.0</span>
+            </div>
+            <p class="text-[10px] text-slate-400 tracking-wide font-medium">Poker & Card Settlements Engine</p>
+          </div>
+        </div>
+
+        <!-- Quick Action Buttons (Desktop) -->
+        <div class="hidden md:flex items-center space-x-2">
+          <button onclick="CardLedger.openNewSessionModal()" class="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs tracking-wide shadow-lg shadow-emerald-900/30 transition flex items-center space-x-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            <span>New Session</span>
+          </button>
+
+          <button onclick="CardLedger.openNewPaymentModal()" class="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs tracking-wide shadow-lg shadow-indigo-900/30 transition flex items-center space-x-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+            <span>Record Payment</span>
+          </button>
+        </div>
+
+        <!-- Desktop Navigation Tabs -->
+        <nav class="hidden lg:flex items-center space-x-1 bg-slate-950/60 p-1 rounded-xl border border-slate-800">
+          <button id="nav-btn-dashboard" onclick="CardLedger.switchTab('dashboard')" class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium transition text-indigo-400 bg-slate-800/80 shadow-sm">
+            Dashboard
+          </button>
+          <button id="nav-btn-sessions" onclick="CardLedger.switchTab('sessions')" class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium transition text-slate-400 hover:text-white hover:bg-slate-800/40">
+            Sessions
+          </button>
+          <button id="nav-btn-settlements" onclick="CardLedger.switchTab('settlements')" class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium transition text-slate-400 hover:text-white hover:bg-slate-800/40">
+            Settlements & Debts
+          </button>
+          <button id="nav-btn-players" onclick="CardLedger.switchTab('players')" class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium transition text-slate-400 hover:text-white hover:bg-slate-800/40">
+            Players
+          </button>
+          <button id="nav-btn-settings" onclick="CardLedger.switchTab('settings')" class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium transition text-slate-400 hover:text-white hover:bg-slate-800/40">
+            Settings & Backup
+          </button>
+        </nav>
+
+        <!-- Mobile Header Actions -->
+        <div class="flex items-center space-x-2 md:hidden">
+          <button onclick="CardLedger.openNewSessionModal()" class="p-2 rounded-lg bg-emerald-600/90 text-white hover:bg-emerald-500 shadow">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          </button>
+          <button onclick="CardLedger.openNewPaymentModal()" class="p-2 rounded-lg bg-indigo-600/90 text-white hover:bg-indigo-500 shadow">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= MAIN CONTAINER ================= -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-8">
+
+    <!-- TAB 1: DASHBOARD -->
+    <section id="tab-dashboard" class="tab-content space-y-6">
+      
+      <!-- Top Metrics Overview -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Total Volume -->
+        <div class="bg-slate-900 border border-slate-800/80 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+          <div class="absolute -right-2 -bottom-2 opacity-5 pointer-events-none">
+            <svg class="w-24 h-24" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+          </div>
+          <span class="text-xs font-medium text-slate-400">Total Volume Played</span>
+          <div id="stat-total-volume" class="text-2xl font-extrabold text-white mt-1">₹0</div>
+          <div id="stat-sessions-count" class="text-[11px] text-slate-500 mt-1">0 sessions logged</div>
+        </div>
+
+        <!-- Outstanding Debts -->
+        <div class="bg-slate-900 border border-slate-800/80 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+          <div class="absolute -right-2 -bottom-2 opacity-5 pointer-events-none text-amber-500">
+            <svg class="w-24 h-24" fill="currentColor" viewBox="0 0 24 24"><path d="M11 15h2v2h-2zm0-8h2v6h-2zm1-5C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+          </div>
+          <span class="text-xs font-medium text-amber-400/90">Unsettled Debts</span>
+          <div id="stat-outstanding-debt" class="text-2xl font-extrabold text-amber-300 mt-1">₹0</div>
+          <div id="stat-open-transfers-count" class="text-[11px] text-slate-500 mt-1">0 pending transfers</div>
+        </div>
+
+        <!-- Biggest Winner -->
+        <div class="bg-slate-900 border border-slate-800/80 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+          <span class="text-xs font-medium text-emerald-400/90 flex items-center space-x-1">
+            <span>🏆 Biggest Winner</span>
+          </span>
+          <div id="stat-biggest-winner" class="text-xl font-bold text-emerald-400 mt-1 truncate">None</div>
+          <div id="stat-winner-amount" class="text-[11px] text-emerald-500/80 mt-1">₹0 career net</div>
+        </div>
+
+        <!-- Biggest Loser -->
+        <div class="bg-slate-900 border border-slate-800/80 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+          <span class="text-xs font-medium text-rose-400/90 flex items-center space-x-1">
+            <span>📉 Biggest In-the-Hole</span>
+          </span>
+          <div id="stat-biggest-loser" class="text-xl font-bold text-rose-400 mt-1 truncate">None</div>
+          <div id="stat-loser-amount" class="text-[11px] text-rose-500/80 mt-1">₹0 career net</div>
+        </div>
+      </div>
+
+      <!-- Suggested Minimum Transfers Banner -->
+      <div class="bg-gradient-to-r from-slate-900 via-slate-900 to-indigo-950/40 border border-indigo-500/20 rounded-2xl p-5 shadow-lg">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800/80">
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              </span>
+              <h2 class="text-base font-bold text-white">Suggested Minimum Transfers</h2>
+            </div>
+            <p class="text-xs text-slate-400 mt-0.5">Splitwise-grade algorithm: Simplifies multi-way poker debts into minimum direct transactions.</p>
+          </div>
+          <button onclick="CardLedger.switchTab('settlements')" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center space-x-1 self-start sm:self-auto">
+            <span>View Full Debt Manager</span>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+
+        <div id="dashboard-suggested-transfers" class="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+      <!-- Quick Action Grid & Recent Activity -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Left: Quick Action Hub & Active Players -->
+        <div class="space-y-6">
+          <!-- Fast Actions -->
+          <div class="bg-slate-900 border border-slate-800/80 rounded-2xl p-5">
+            <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Quick Actions</h3>
+            <div class="grid grid-cols-2 gap-3">
+              <button onclick="CardLedger.openNewSessionModal()" class="p-3 rounded-xl bg-slate-800 hover:bg-slate-700/80 border border-slate-700/60 text-left transition group">
+                <div class="h-8 w-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-2 group-hover:bg-emerald-500/20">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                </div>
+                <div class="text-sm font-semibold text-white">Log Game</div>
+                <div class="text-[11px] text-slate-400">Buy-ins & Cash-outs</div>
+              </button>
+
+              <button onclick="CardLedger.openNewPaymentModal()" class="p-3 rounded-xl bg-slate-800 hover:bg-slate-700/80 border border-slate-700/60 text-left transition group">
+                <div class="h-8 w-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center mb-2 group-hover:bg-indigo-500/20">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                </div>
+                <div class="text-sm font-semibold text-white">Log Payment</div>
+                <div class="text-[11px] text-slate-400">Settle open dues</div>
+              </button>
+
+              <button onclick="CardLedger.openPlayerModal()" class="p-3 rounded-xl bg-slate-800 hover:bg-slate-700/80 border border-slate-700/60 text-left transition group">
+                <div class="h-8 w-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center mb-2 group-hover:bg-purple-500/20">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                </div>
+                <div class="text-sm font-semibold text-white">Add Player</div>
+                <div class="text-[11px] text-slate-400">Join roster</div>
+              </button>
+
+              <button onclick="CardLedger.loadSampleData()" class="p-3 rounded-xl bg-slate-800 hover:bg-slate-700/80 border border-slate-700/60 text-left transition group">
+                <div class="h-8 w-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center mb-2 group-hover:bg-amber-500/20">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.03 8.03 0 01-15.357-2m15.357 2H15"/></svg>
+                </div>
+                <div class="text-sm font-semibold text-white">Demo Data</div>
+                <div class="text-[11px] text-slate-400">Load test games</div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Top Standings Leaderboard -->
+          <div class="bg-slate-900 border border-slate-800/80 rounded-2xl p-5">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+                <span>Player Standings</span>
+              </h3>
+              <button onclick="CardLedger.switchTab('players')" class="text-xs text-indigo-400 hover:text-indigo-300">View All</button>
+            </div>
+            <div id="dashboard-players-leaderboard" class="space-y-2.5">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Recent Sessions & Settlements Log (2 Cols on lg) -->
+        <div class="lg:col-span-2 space-y-6">
+          
+          <!-- Recent Game Sessions -->
+          <div class="bg-slate-900 border border-slate-800/80 rounded-2xl p-5">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h3 class="text-base font-bold text-white">Recent Sessions</h3>
+                <p class="text-xs text-slate-400">Recent games with balanced buy-ins and cash-outs</p>
+              </div>
+              <button onclick="CardLedger.switchTab('sessions')" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">See All Sessions →</button>
+            </div>
+            <div id="dashboard-recent-sessions" class="space-y-3">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- Recent Payments / Settlements Log -->
+          <div class="bg-slate-900 border border-slate-800/80 rounded-2xl p-5">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h3 class="text-base font-bold text-white">Recent Payments Log</h3>
+                <p class="text-xs text-slate-400">Direct cash and UPI settlements between players</p>
+              </div>
+              <button onclick="CardLedger.switchTab('settlements')" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">See All Payments →</button>
+            </div>
+            <div id="dashboard-recent-payments" class="space-y-2.5">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 2: SESSIONS -->
+    <section id="tab-sessions" class="tab-content hidden space-y-6">
+      
+      <!-- Sessions Header -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+        <div>
+          <h2 class="text-xl font-bold text-white flex items-center space-x-2">
+            <span>Poker & Card Game Sessions</span>
+            <span id="sessions-badge-count" class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">0</span>
+          </h2>
+          <p class="text-xs text-slate-400 mt-1">Every session enforces zero-sum balance: Total Buy-ins = Total Cash-outs.</p>
+        </div>
+        <button onclick="CardLedger.openNewSessionModal()" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm tracking-wide shadow-lg shadow-emerald-900/30 transition flex items-center space-x-2 self-start sm:self-auto">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          <span>Record New Session</span>
+        </button>
+      </div>
+
+      <!-- Filter / Search Bar -->
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div class="relative w-full sm:w-72">
+          <input type="text" id="session-search-input" oninput="CardLedger.renderSessionsList()" placeholder="Search game, title, notes..." class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 pl-9 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+          <svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        </div>
+      </div>
+
+      <!-- Sessions List -->
+      <div id="sessions-list-container" class="space-y-4">
+        <!-- Rendered dynamically -->
+      </div>
+    </section>
+
+    <!-- TAB 3: SETTLEMENTS & DEBTS -->
+    <section id="tab-settlements" class="tab-content hidden space-y-6">
+      
+      <!-- Settlements Header -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+        <div>
+          <h2 class="text-xl font-bold text-white flex items-center space-x-2">
+            <span>Settlement & Debt Manager</span>
+          </h2>
+          <p class="text-xs text-slate-400 mt-1">Live debtor-to-creditor balancing with Splitwise-style minimal transaction routing.</p>
+        </div>
+        <button onclick="CardLedger.openNewPaymentModal()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm tracking-wide shadow-lg shadow-indigo-900/30 transition flex items-center space-x-2 self-start sm:self-auto">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+          <span>Record Direct Payment</span>
+        </button>
+      </div>
+
+      <!-- Suggested Transfers (Full Width) -->
+      <div class="bg-slate-900 border border-indigo-500/30 rounded-2xl p-5 shadow-lg">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-800">
+          <div>
+            <h3 class="text-base font-bold text-white flex items-center space-x-2">
+              <span class="p-1 rounded-md bg-indigo-500/20 text-indigo-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              </span>
+              <span>Optimal Settlement Route (Minimum Transfers)</span>
+            </h3>
+            <p class="text-xs text-slate-400 mt-0.5">Click "Settle" on any suggested transfer to automatically prefill the payment recorder.</p>
+          </div>
+          <button onclick="CardLedger.copySettlementPlan()" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex items-center space-x-1.5 self-start sm:self-auto">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+            <span>Copy Plan for WhatsApp / Group</span>
+          </button>
+        </div>
+
+        <div id="settlements-suggested-list" class="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+      <!-- Current Outstanding Player Balances Matrix -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+        <h3 class="text-base font-bold text-white mb-1">Current Player Balances</h3>
+        <p class="text-xs text-slate-400 mb-4">Positive balances mean money owed to player (Creditor). Negative balances mean money owed by player (Debtor).</p>
+        
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-950/60 text-slate-400 font-semibold border-b border-slate-800">
+              <tr>
+                <th class="py-3 px-4">Player</th>
+                <th class="py-3 px-4">Game Net</th>
+                <th class="py-3 px-4">Payments Made</th>
+                <th class="py-3 px-4">Payments Received</th>
+                <th class="py-3 px-4">Current Outstanding Balance</th>
+                <th class="py-3 px-4 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="settlements-balance-matrix-tbody" class="divide-y divide-slate-800/60 font-medium">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Historic Payments Log -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-base font-bold text-white">Payments & Transfers History</h3>
+            <p class="text-xs text-slate-400">All recorded partial and full settlement transactions</p>
+          </div>
+          <span id="payments-count-badge" class="text-xs px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">0 Payments</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-950/60 text-slate-400 font-semibold border-b border-slate-800">
+              <tr>
+                <th class="py-3 px-4">Date</th>
+                <th class="py-3 px-4">Paid By (Debtor)</th>
+                <th class="py-3 px-4">Paid To (Creditor)</th>
+                <th class="py-3 px-4">Amount</th>
+                <th class="py-3 px-4">Method</th>
+                <th class="py-3 px-4">Notes</th>
+                <th class="py-3 px-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="settlements-payments-history-tbody" class="divide-y divide-slate-800/60 font-medium">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- TAB 4: PLAYERS -->
+    <section id="tab-players" class="tab-content hidden space-y-6">
+      
+      <!-- Players Header -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+        <div>
+          <h2 class="text-xl font-bold text-white flex items-center space-x-2">
+            <span>Players Directory</span>
+            <span id="players-badge-count" class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">0</span>
+          </h2>
+          <p class="text-xs text-slate-400 mt-1">Manage active participants, view career lifetime net profits, and inspect individual player ledgers.</p>
+        </div>
+        <button onclick="CardLedger.openPlayerModal()" class="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm tracking-wide shadow-lg shadow-purple-900/30 transition flex items-center space-x-2 self-start sm:self-auto">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+          <span>Add New Player</span>
+        </button>
+      </div>
+
+      <!-- Filter / Status Selector -->
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div class="relative w-full sm:w-72">
+          <input type="text" id="player-search-input" oninput="CardLedger.renderPlayersList()" placeholder="Search player name or phone..." class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 pl-9 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-purple-500">
+          <svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        </div>
+        <div class="flex items-center space-x-2 w-full sm:w-auto">
+          <button id="player-filter-all" onclick="CardLedger.setPlayerFilter('all')" class="flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-600 text-white transition">All</button>
+          <button id="player-filter-active" onclick="CardLedger.setPlayerFilter('active')" class="flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white transition">Active Only</button>
+          <button id="player-filter-archived" onclick="CardLedger.setPlayerFilter('archived')" class="flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white transition">Archived</button>
+        </div>
+      </div>
+
+      <!-- Players Grid -->
+      <div id="players-list-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Rendered dynamically -->
+      </div>
+    </section>
+
+    <!-- TAB 5: SETTINGS & BACKUP -->
+    <section id="tab-settings" class="tab-content hidden space-y-6">
+      
+      <!-- Settings Header -->
+      <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+        <h2 class="text-xl font-bold text-white">Settings, Data Persistence & Backups</h2>
+        <p class="text-xs text-slate-400 mt-1">CardLedger saves state automatically to localStorage key <code class="text-indigo-400 font-mono">cardledger_v1_data</code>. Export regular JSON backups to prevent accidental browser cache clearing.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- Preferences Card -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <h3 class="text-base font-bold text-white flex items-center space-x-2">
+            <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            <span>General Preferences</span>
+          </h3>
+
+          <!-- Currency Selector -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Primary Currency Symbol</label>
+            <div class="grid grid-cols-4 gap-2">
+              <button onclick="CardLedger.setCurrency('₹')" id="curr-btn-INR" class="curr-btn p-2 rounded-xl bg-slate-800 border border-slate-700 font-bold text-sm text-center transition hover:border-indigo-500">₹ INR</button>
+              <button onclick="CardLedger.setCurrency('$')" id="curr-btn-USD" class="curr-btn p-2 rounded-xl bg-slate-800 border border-slate-700 font-bold text-sm text-center transition hover:border-indigo-500">$ USD</button>
+              <button onclick="CardLedger.setCurrency('€')" id="curr-btn-EUR" class="curr-btn p-2 rounded-xl bg-slate-800 border border-slate-700 font-bold text-sm text-center transition hover:border-indigo-500">€ EUR</button>
+              <button onclick="CardLedger.setCurrency('£')" id="curr-btn-GBP" class="curr-btn p-2 rounded-xl bg-slate-800 border border-slate-700 font-bold text-sm text-center transition hover:border-indigo-500">£ GBP</button>
+            </div>
+            <p class="text-[11px] text-slate-500 mt-1">Changes the display symbol across all sessions, debts, and ledgers instantly.</p>
+          </div>
+
+          <!-- Quick Demo Generator -->
+          <div class="pt-3 border-t border-slate-800">
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Demo & Test Workflow</label>
+            <p class="text-xs text-slate-400 mb-3">Load a realistic sample game with 5 players, buy-ins, cash-outs, and partial debt settlements to test all features instantly.</p>
+            <button onclick="CardLedger.loadSampleData()" class="w-full py-2.5 rounded-xl bg-amber-600/90 hover:bg-amber-500 text-white font-bold text-xs tracking-wide shadow-lg shadow-amber-950/40 transition flex items-center justify-center space-x-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+              <span>Load Sample Game & Debts</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Backup & Restore Card -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <h3 class="text-base font-bold text-white flex items-center space-x-2">
+            <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+            <span>JSON Backup & Portability</span>
+          </h3>
+
+          <p class="text-xs text-slate-400">Download a full JSON snapshot of your players, game sessions, and payments. You can transfer this file to any computer or browser.</p>
+
+          <div class="flex flex-col sm:flex-row gap-3">
+            <!-- Export Button -->
+            <button onclick="CardLedger.exportDataJSON()" class="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs tracking-wide shadow-md transition flex items-center justify-center space-x-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              <span>Export JSON Backup</span>
+            </button>
+
+            <!-- Import Button -->
+            <label class="flex-1 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs tracking-wide shadow-md transition flex items-center justify-center space-x-2 cursor-pointer text-center">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+              <span>Import JSON File</span>
+              <input type="file" id="json-file-input" accept=".json" onchange="CardLedger.importDataJSON(event)" class="hidden">
+            </label>
+          </div>
+
+          <!-- Danger Zone: Reset All Data -->
+          <div class="pt-4 border-t border-slate-800">
+            <h4 class="text-xs font-semibold text-rose-400 uppercase tracking-wider mb-2">Danger Zone</h4>
+            <button onclick="CardLedger.resetAllData()" class="w-full py-2.5 rounded-xl bg-rose-950/60 hover:bg-rose-900 border border-rose-800/80 text-rose-300 font-bold text-xs transition flex items-center justify-center space-x-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              <span>Clear All Data & Reset Application</span>
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ================= MOBILE BOTTOM NAVIGATION ================= -->
+  <nav class="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-2 py-1.5 flex items-center justify-around pb-safe">
+    <button onclick="CardLedger.switchTab('dashboard')" id="mob-nav-dashboard" class="mob-tab flex flex-col items-center py-1 px-2 rounded-lg text-indigo-400">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      <span class="text-[10px] font-medium mt-0.5">Home</span>
+    </button>
+    <button onclick="CardLedger.switchTab('sessions')" id="mob-nav-sessions" class="mob-tab flex flex-col items-center py-1 px-2 rounded-lg text-slate-400">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      <span class="text-[10px] font-medium mt-0.5">Sessions</span>
+    </button>
+    <button onclick="CardLedger.switchTab('settlements')" id="mob-nav-settlements" class="mob-tab flex flex-col items-center py-1 px-2 rounded-lg text-slate-400">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <span class="text-[10px] font-medium mt-0.5">Debts</span>
+    </button>
+    <button onclick="CardLedger.switchTab('players')" id="mob-nav-players" class="mob-tab flex flex-col items-center py-1 px-2 rounded-lg text-slate-400">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+      <span class="text-[10px] font-medium mt-0.5">Players</span>
+    </button>
+    <button onclick="CardLedger.switchTab('settings')" id="mob-nav-settings" class="mob-tab flex flex-col items-center py-1 px-2 rounded-lg text-slate-400">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      <span class="text-[10px] font-medium mt-0.5">Settings</span>
+    </button>
+  </nav>
+
+  <!-- ================= MODALS ================= -->
+
+  <!-- 1. SESSION MODAL (CREATE / EDIT) -->
+  <div id="modal-session" class="fixed inset-0 z-50 hidden flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+    <div class="fixed inset-0 modal-backdrop" onclick="CardLedger.closeSessionModal()"></div>
+    
+    <div class="relative bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] z-10">
+      
+      <!-- Modal Header -->
+      <div class="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/40">
+        <div>
+          <h3 id="session-modal-title" class="text-lg font-bold text-white">Record Poker / Card Game Session</h3>
+          <p class="text-xs text-slate-400">Enter each player's total Buy-in & Cash-out. Ledger must balance before saving.</p>
+        </div>
+        <button onclick="CardLedger.closeSessionModal()" class="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div class="p-5 overflow-y-auto flex-1 space-y-5">
+        <input type="hidden" id="session-form-id" value="">
+
+        <!-- Basic Session Info -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Game Title / Tag *</label>
+            <input type="text" id="session-form-title" placeholder="e.g. Friday Poker Night, Diwali Teen Patti" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Date & Time *</label>
+            <input type="datetime-local" id="session-form-date" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Notes / Stakes</label>
+            <input type="text" id="session-form-notes" placeholder="e.g. ₹10/₹20 blinds, 500 cap" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+          </div>
+        </div>
+
+        <!-- Players Ledger Section -->
+        <div class="space-y-3">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h4 class="text-sm font-bold text-white">Player Entries</h4>
+              <p class="text-xs text-slate-400">Add participating players and their chip tallies.</p>
+            </div>
+            <div class="flex items-center space-x-2">
+              <button onclick="CardLedger.addAllActivePlayersToSession()" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-medium transition">
+                + Add All Active Players
+              </button>
+              <button onclick="CardLedger.addPlayerRowToSession()" class="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition flex items-center space-x-1">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                <span>Add Player Row</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Player rows container -->
+          <div id="session-player-rows-container" class="space-y-2">
+            <!-- Dynamic rows will render here -->
+          </div>
+        </div>
+
+        <!-- LIVE LEDGER BALANCE VALIDATION GUARD -->
+        <div id="session-balance-guard" class="p-4 rounded-2xl border transition-all">
+          <!-- Dynamic validation content -->
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="p-5 border-t border-slate-800 bg-slate-950/40 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div class="text-xs text-slate-400 flex items-center space-x-2">
+          <span class="inline-block w-2 h-2 rounded-full bg-amber-400"></span>
+          <span>Zero-sum rule: All cash-outs must sum to total buy-ins</span>
+        </div>
+        <div class="flex items-center space-x-3 w-full sm:w-auto">
+          <button onclick="CardLedger.closeSessionModal()" class="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition">
+            Cancel
+          </button>
+          <button id="session-save-btn" onclick="CardLedger.saveSession()" class="flex-1 sm:flex-none px-6 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs shadow-lg shadow-emerald-900/30 transition flex items-center justify-center space-x-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            <span>Save Session</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 2. PAYMENT / SETTLEMENT MODAL -->
+  <div id="modal-payment" class="fixed inset-0 z-50 hidden flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+    <div class="fixed inset-0 modal-backdrop" onclick="CardLedger.closePaymentModal()"></div>
+    
+    <div class="relative bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col z-10">
+      
+      <!-- Modal Header -->
+      <div class="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/40">
+        <div>
+          <h3 id="payment-modal-title" class="text-lg font-bold text-white">Record Settlement Payment</h3>
+          <p class="text-xs text-slate-400">Direct settlement from Debtor (Paid By) to Creditor (Paid To).</p>
+        </div>
+        <button onclick="CardLedger.closePaymentModal()" class="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-5 space-y-4">
+        <input type="hidden" id="payment-form-id" value="">
+
+        <!-- Paid By (Debtor) Dropdown -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Paid By (Debtor / Paying Party) *</label>
+          <select id="payment-form-from" onchange="CardLedger.onPaymentPlayerChange()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+            <!-- Dynamically populated -->
+          </select>
+          <div id="payment-from-balance-hint" class="text-[11px] text-slate-400 mt-1"></div>
+        </div>
+
+        <!-- Paid To (Creditor) Dropdown -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Paid To (Creditor / Receiving Party) *</label>
+          <select id="payment-form-to" onchange="CardLedger.onPaymentPlayerChange()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+            <!-- Dynamically populated -->
+          </select>
+          <div id="payment-to-balance-hint" class="text-[11px] text-slate-400 mt-1"></div>
+        </div>
+
+        <!-- Amount with Quick Helpers -->
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="text-xs font-semibold text-slate-300">Amount Paid *</label>
+            <button type="button" id="payment-auto-fill-btn" onclick="CardLedger.autoFillSettlementAmount()" class="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium hidden">
+              Autofill Full Debt
+            </button>
+          </div>
+          <div class="relative">
+            <span id="payment-curr-symbol" class="absolute left-3.5 top-2.5 text-xs text-slate-500 font-bold">₹</span>
+            <input type="number" step="any" min="0.01" id="payment-form-amount" placeholder="0" class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-3 py-2 text-sm font-bold text-white focus:outline-none focus:border-indigo-500">
+          </div>
+        </div>
+
+        <!-- Date & Time -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Payment Date & Time *</label>
+          <input type="datetime-local" id="payment-form-date" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+        </div>
+
+        <!-- Payment Method -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Payment Method</label>
+          <div class="grid grid-cols-4 gap-2">
+            <button type="button" onclick="CardLedger.setPaymentMethod('UPI')" id="pm-btn-UPI" class="pm-btn p-2 rounded-xl bg-indigo-600 text-white font-bold text-xs text-center border border-indigo-500">UPI</button>
+            <button type="button" onclick="CardLedger.setPaymentMethod('Cash')" id="pm-btn-Cash" class="pm-btn p-2 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs text-center border border-slate-700">Cash</button>
+            <button type="button" onclick="CardLedger.setPaymentMethod('Bank')" id="pm-btn-Bank" class="pm-btn p-2 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs text-center border border-slate-700">Bank</button>
+            <button type="button" onclick="CardLedger.setPaymentMethod('Other')" id="pm-btn-Other" class="pm-btn p-2 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs text-center border border-slate-700">Other</button>
+          </div>
+          <input type="hidden" id="payment-form-method" value="UPI">
+        </div>
+
+        <!-- Note / Reference ID -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Notes / Transaction Reference</label>
+          <input type="text" id="payment-form-note" placeholder="e.g. GPay ref #1234, Diwali round 1 settle" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="p-5 border-t border-slate-800 bg-slate-950/40 flex items-center justify-end space-x-3">
+        <button onclick="CardLedger.closePaymentModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition">
+          Cancel
+        </button>
+        <button onclick="CardLedger.savePayment()" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-900/30 transition flex items-center space-x-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+          <span>Save Payment</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 3. PLAYER MODAL (CREATE / EDIT) -->
+  <div id="modal-player" class="fixed inset-0 z-50 hidden flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+    <div class="fixed inset-0 modal-backdrop" onclick="CardLedger.closePlayerModal()"></div>
+    
+    <div class="relative bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col z-10">
+      
+      <!-- Modal Header -->
+      <div class="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/40">
+        <div>
+          <h3 id="player-modal-title" class="text-lg font-bold text-white">Add Player</h3>
+          <p class="text-xs text-slate-400">Player profiles track career profit/loss and individual debts.</p>
+        </div>
+        <button onclick="CardLedger.closePlayerModal()" class="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-5 space-y-4">
+        <input type="hidden" id="player-form-id" value="">
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Player Name *</label>
+          <input type="text" id="player-form-name" placeholder="e.g. Vikram Mehta" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Phone Number (Optional)</label>
+          <input type="text" id="player-form-phone" placeholder="e.g. +91 98765 43210 (for UPI / WhatsApp)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Notes / Alias (Optional)</label>
+          <input type="text" id="player-form-notes" placeholder="e.g. Aggressive bettor, preferred seat" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500">
+        </div>
+
+        <!-- Active vs Archived Toggle -->
+        <div class="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800">
+          <div>
+            <div class="text-xs font-bold text-white">Status</div>
+            <div class="text-[11px] text-slate-400">Archived players are hidden from new game selection.</div>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="player-form-active" checked class="sr-only peer">
+            <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+          </label>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="p-5 border-t border-slate-800 bg-slate-950/40 flex items-center justify-end space-x-3">
+        <button onclick="CardLedger.closePlayerModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition">
+          Cancel
+        </button>
+        <button onclick="CardLedger.savePlayer()" class="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-lg shadow-purple-900/30 transition flex items-center space-x-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+          <span>Save Player</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 4. INDIVIDUAL PLAYER LEDGER / TIMELINE MODAL -->
+  <div id="modal-player-ledger" class="fixed inset-0 z-50 hidden flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+    <div class="fixed inset-0 modal-backdrop" onclick="CardLedger.closePlayerLedgerModal()"></div>
+    
+    <div class="relative bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] z-10">
+      
+      <!-- Modal Header -->
+      <div class="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/40">
+        <div class="flex items-center space-x-3">
+          <div id="ledger-avatar" class="w-10 h-10 rounded-2xl bg-indigo-600/30 text-indigo-400 font-bold flex items-center justify-center text-sm border border-indigo-500/30">
+            P
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <h3 id="ledger-player-name" class="text-lg font-bold text-white">Player Statement</h3>
+              <span id="ledger-status-badge" class="text-[10px] px-2 py-0.5 rounded-full font-bold">Active</span>
+            </div>
+            <p id="ledger-player-phone" class="text-xs text-slate-400">Statement of games & settlements</p>
+          </div>
+        </div>
+
+        <div class="flex items-center space-x-2">
+          <button onclick="CardLedger.copyPlayerStatement()" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" title="Copy Statement for WhatsApp">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+          </button>
+          <button onclick="CardLedger.closePlayerLedgerModal()" class="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Stats Ribbon -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 p-4 bg-slate-950/60 border-b border-slate-800">
+        <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-2.5">
+          <div class="text-[10px] text-slate-400">Games Played</div>
+          <div id="ledger-stat-games" class="text-sm font-bold text-white mt-0.5">0</div>
+        </div>
+        <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-2.5">
+          <div class="text-[10px] text-slate-400">Career Game Net</div>
+          <div id="ledger-stat-career-net" class="text-sm font-bold text-white mt-0.5">₹0</div>
+        </div>
+        <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-2.5">
+          <div class="text-[10px] text-slate-400">Net Payments Settled</div>
+          <div id="ledger-stat-net-payments" class="text-sm font-bold text-white mt-0.5">₹0</div>
+        </div>
+        <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-2.5">
+          <div class="text-[10px] text-slate-400">Current Balance</div>
+          <div id="ledger-stat-current-balance" class="text-sm font-extrabold text-amber-400 mt-0.5">₹0</div>
+        </div>
+      </div>
+
+      <!-- Body: Unified Chronological Timeline -->
+      <div class="p-5 overflow-y-auto flex-1 space-y-4">
+        <div class="flex items-center justify-between">
+          <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Chronological Ledger History</h4>
+          <span class="text-[11px] text-slate-500">Includes games & direct payments</span>
+        </div>
+
+        <div id="ledger-timeline-container" class="space-y-3">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 5. TOAST NOTIFICATION CONTAINER -->
+  <div id="toast-container" class="fixed bottom-20 sm:bottom-6 right-6 z-50 flex flex-col space-y-2 pointer-events-none">
+    <!-- Toasts injected here -->
+  </div>
+
+  <!-- ================= JAVASCRIPT APP ENGINE ================= -->
+  <script>
+    /**
+     * CardLedger Application Module
+     * Encapsulated to prevent global scope pollution, duplicate declaration bugs,
+     * and maintain 100% reactive state synchronization.
+     */
+    const CardLedger = (function () {
+      'use strict';
+
+      // 1. STORAGE CONSTANTS & DEFAULTS
+      const STORAGE_KEY = 'cardledger_v1_data';
+
+      const DEFAULT_STATE = {
+        config: {
+          currency: '₹',
+          chipRate: 1,
+          theme: 'dark'
+        },
+        players: [],
+        sessions: [],
+        payments: []
+      };
+
+      // App in-memory state
+      let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+      let currentTab = 'dashboard';
+      let activePlayerFilter = 'all'; // 'all', 'active', 'archived'
+      let activeSessionPlayerRows = []; // working draft inside session modal
+      let activeLedgerPlayerId = null;
+
+      // 2. UTILITIES (Protected inside scope)
+      const uid = (prefix = 'id') => {
+        return `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      };
+
+      const formatCurrency = (amount, customSymbol = null) => {
+        const symbol = customSymbol || (state.config && state.config.currency) || '₹';
+        const num = Number(amount) || 0;
+        const formatted = Math.abs(num).toLocaleString('en-IN', {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 2
+        });
+        if (num < 0) {
+          return `-${symbol}${formatted}`;
+        }
+        return `${symbol}${formatted}`;
+      };
+
+      const formatDateTime = (isoString) => {
+        if (!isoString) return '';
+        try {
+          const d = new Date(isoString);
+          if (isNaN(d.getTime())) return isoString;
+          return d.toLocaleDateString('en-IN', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+        } catch (e) {
+          return isoString;
+        }
+      };
+
+      const getNowDatetimeInputString = () => {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        return now.toISOString().slice(0, 16);
+      };
+
+      const showToast = (message, type = 'info') => {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+
+        const toast = document.createElement('div');
+        toast.className = `pointer-events-auto px-4 py-3 rounded-2xl shadow-xl border text-xs font-medium flex items-center space-x-2 transition-all transform duration-300 translate-y-2 opacity-0 ${
+          type === 'success'
+            ? 'bg-emerald-950/90 border-emerald-800 text-emerald-200'
+            : type === 'error'
+            ? 'bg-rose-950/90 border-rose-800 text-rose-200'
+            : type === 'warning'
+            ? 'bg-amber-950/90 border-amber-800 text-amber-200'
+            : 'bg-slate-900/90 border-slate-700 text-slate-200'
+        }`;
+
+        let iconSvg = '';
+        if (type === 'success') {
+          iconSvg = '<svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
+        } else if (type === 'error') {
+          iconSvg = '<svg class="w-4 h-4 text-rose-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>';
+        } else if (type === 'warning') {
+          iconSvg = '<svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>';
+        } else {
+          iconSvg = '<svg class="w-4 h-4 text-indigo-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
+        }
+
+        toast.innerHTML = `${iconSvg}<span>${message}</span>`;
+        container.appendChild(toast);
+
+        // Animate in
+        requestAnimationFrame(() => {
+          toast.classList.remove('translate-y-2', 'opacity-0');
+        });
+
+        // Auto remove
+        setTimeout(() => {
+          toast.classList.add('opacity-0', 'translate-y-2');
+          setTimeout(() => {
+            if (toast.parentNode) toast.parentNode.removeChild(toast);
+          }, 300);
+        }, 3200);
+      };
+
+      // 3. PERSISTENCE ENGINE
+      const saveToStorage = () => {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        } catch (e) {
+          console.error('Failed to save to localStorage:', e);
+          showToast('Failed to save to localStorage. Disk might be full.', 'error');
+        }
+      };
+
+      const loadFromStorage = () => {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            state = {
+              config: Object.assign({}, DEFAULT_STATE.config, parsed.config || {}),
+              players: Array.isArray(parsed.players) ? parsed.players : [],
+              sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
+              payments: Array.isArray(parsed.payments) ? parsed.payments : []
+            };
+          } else {
+            state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+          }
+        } catch (e) {
+          console.error('Error loading data from localStorage:', e);
+          state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+        }
+      };
+
+      // 4. FINANCIAL & DEBT SETTLEMENT ALGORITHM ENGINE
+      /**
+       * Calculates complete financial balance matrix for every player.
+       * - totalBuyIns: sum of buy-ins across sessions
+       * - totalCashOuts: sum of cash-outs across sessions
+       * - careerGameNet: cashOuts - buyIns
+       * - paymentsMade: settlements paid to others (+)
+       * - paymentsReceived: settlements received from others (-)
+       * - outstandingBalance: careerGameNet + paymentsMade - paymentsReceived
+       * 
+       * Invariant:
+       * If positive (> 0): Player is owed money (CREDITOR).
+       * If negative (< 0): Player owes money (DEBTOR).
+       * Sum(outstandingBalance across all players) == 0.
+       */
+      const calculatePlayerBalances = () => {
+        const balances = {};
+
+        // Initialize for all known players
+        state.players.forEach((p) => {
+          balances[p.id] = {
+            player: p,
+            gamesCount: 0,
+            totalBuyIn: 0,
+            totalCashOut: 0,
+            careerGameNet: 0,
+            paymentsMade: 0,
+            paymentsReceived: 0,
+            outstandingBalance: 0
+          };
+        });
+
+        // 1. Accumulate game sessions
+        state.sessions.forEach((session) => {
+          if (!session.players || !Array.isArray(session.players)) return;
+          session.players.forEach((sp) => {
+            if (!balances[sp.playerId]) {
+              // Player might have been deleted or created inline
+              const fallbackPlayer = state.players.find(p => p.id === sp.playerId) || {
+                id: sp.playerId,
+                name: sp.playerName || 'Unknown Player',
+                isArchived: true
+              };
+              balances[sp.playerId] = {
+                player: fallbackPlayer,
+                gamesCount: 0,
+                totalBuyIn: 0,
+                totalCashOut: 0,
+                careerGameNet: 0,
+                paymentsMade: 0,
+                paymentsReceived: 0,
+                outstandingBalance: 0
+              };
+            }
+
+            const b = balances[sp.playerId];
+            b.gamesCount += 1;
+            b.totalBuyIn += Number(sp.buyIn) || 0;
+            b.totalCashOut += Number(sp.cashOut) || 0;
+            b.careerGameNet += (Number(sp.cashOut) || 0) - (Number(sp.buyIn) || 0);
+          });
+        });
+
+        // 2. Accumulate settlement payments
+        state.payments.forEach((pm) => {
+          const amt = Number(pm.amount) || 0;
+          if (balances[pm.fromPlayerId]) {
+            balances[pm.fromPlayerId].paymentsMade += amt;
+          }
+          if (balances[pm.toPlayerId]) {
+            balances[pm.toPlayerId].paymentsReceived += amt;
+          }
+        });
+
+        // 3. Compute final current outstanding balance
+        Object.values(balances).forEach((b) => {
+          // If you won +1000, you are owed 1000. When someone pays you 400, your outstanding balance becomes 600.
+          // If you lost -1000, you owe 1000. When you pay 400, your outstanding balance becomes -600.
+          b.outstandingBalance = b.careerGameNet + b.paymentsMade - b.paymentsReceived;
+          // Clean floating point artifacts
+          b.outstandingBalance = Math.round(b.outstandingBalance * 100) / 100;
+          b.careerGameNet = Math.round(b.careerGameNet * 100) / 100;
+          b.totalBuyIn = Math.round(b.totalBuyIn * 100) / 100;
+          b.totalCashOut = Math.round(b.totalCashOut * 100) / 100;
+          b.paymentsMade = Math.round(b.paymentsMade * 100) / 100;
+          b.paymentsReceived = Math.round(b.paymentsReceived * 100) / 100;
+        });
+
+        return balances;
+      };
+
+      /**
+       * SUGGESTED MINIMUM TRANSFERS ALGORITHM (Greedy Min-Cash-Flow)
+       * Simplifies multi-party debt cycles into the minimal number of direct transfers.
+       * E.g., if A owes B ₹500 and B owes C ₹500, A pays C ₹500 directly.
+       */
+      const calculateSuggestedTransfers = (balancesMap) => {
+        const debtors = []; // People who owe (negative balance)
+        const creditors = []; // People who are owed (positive balance)
+
+        Object.values(balancesMap).forEach((b) => {
+          const bal = b.outstandingBalance;
+          if (bal < -0.01) {
+            debtors.push({
+              playerId: b.player.id,
+              name: b.player.name,
+              amount: Math.abs(bal)
+            });
+          } else if (bal > 0.01) {
+            creditors.push({
+              playerId: b.player.id,
+              name: b.player.name,
+              amount: bal
+            });
+          }
+        });
+
+        const transfers = [];
+        let guard = 0;
+
+        while (debtors.length > 0 && creditors.length > 0 && guard < 100) {
+          guard++;
+          // Sort descending
+          debtors.sort((a, b) => b.amount - a.amount);
+          creditors.sort((a, b) => b.amount - a.amount);
+
+          const maxDebtor = debtors[0];
+          const maxCreditor = creditors[0];
+
+          const transferAmount = Math.min(maxDebtor.amount, maxCreditor.amount);
+          const roundedAmount = Math.round(transferAmount * 100) / 100;
+
+          if (roundedAmount > 0.01) {
+            transfers.push({
+              id: `trans_${guard}`,
+              fromPlayerId: maxDebtor.playerId,
+              fromName: maxDebtor.name,
+              toPlayerId: maxCreditor.playerId,
+              toName: maxCreditor.name,
+              amount: roundedAmount
+            });
+          }
+
+          maxDebtor.amount -= transferAmount;
+          maxCreditor.amount -= transferAmount;
+
+          if (maxDebtor.amount < 0.01) {
+            debtors.shift();
+          }
+          if (maxCreditor.amount < 0.01) {
+            creditors.shift();
+          }
+        }
+
+        return transfers;
+      };
+
+      // 5. UI NAVIGATION
+      const switchTab = (tabName) => {
+        currentTab = tabName;
+
+        // Hide all tabs
+        document.querySelectorAll('.tab-content').forEach((el) => {
+          el.classList.add('hidden');
+        });
+
+        // Show target tab
+        const target = document.getElementById(`tab-${tabName}`);
+        if (target) {
+          target.classList.remove('hidden');
+        }
+
+        // Update Desktop Nav styles
+        document.querySelectorAll('.nav-tab').forEach((btn) => {
+          btn.classList.remove('text-indigo-400', 'bg-slate-800/80', 'shadow-sm');
+          btn.classList.add('text-slate-400');
+        });
+        const activeNavBtn = document.getElementById(`nav-btn-${tabName}`);
+        if (activeNavBtn) {
+          activeNavBtn.classList.remove('text-slate-400');
+          activeNavBtn.classList.add('text-indigo-400', 'bg-slate-800/80', 'shadow-sm');
+        }
+
+        // Update Mobile Nav styles
+        document.querySelectorAll('.mob-tab').forEach((btn) => {
+          btn.classList.remove('text-indigo-400');
+          btn.classList.add('text-slate-400');
+        });
+        const activeMobNavBtn = document.getElementById(`mob-nav-${tabName}`);
+        if (activeMobNavBtn) {
+          activeMobNavBtn.classList.remove('text-slate-400');
+          activeMobNavBtn.classList.add('text-indigo-400');
+        }
+
+        // Render target tab content
+        refreshUI();
+      };
+
+      // 6. GLOBAL REACTIVE RE-RENDER
+      const refreshUI = () => {
+        const balances = calculatePlayerBalances();
+        const suggestedTransfers = calculateSuggestedTransfers(balances);
+
+        renderDashboardStats(balances, suggestedTransfers);
+        renderSessionsList();
+        renderSettlementsTab(balances, suggestedTransfers);
+        renderPlayersList(balances);
+        renderSettingsTab();
+      };
+
+      // 7. RENDER DASHBOARD
+      const renderDashboardStats = (balances, suggestedTransfers) => {
+        // Total Volume
+        let totalVolume = 0;
+        state.sessions.forEach((s) => {
+          totalVolume += Number(s.totalBuyIn) || 0;
+        });
+
+        const volEl = document.getElementById('stat-total-volume');
+        if (volEl) volEl.textContent = formatCurrency(totalVolume);
+
+        const sessCountEl = document.getElementById('stat-sessions-count');
+        if (sessCountEl) sessCountEl.textContent = `${state.sessions.length} sessions logged`;
+
+        // Outstanding Debt (sum of positive balances)
+        let totalUnsettled = 0;
+        Object.values(balances).forEach((b) => {
+          if (b.outstandingBalance > 0.01) {
+            totalUnsettled += b.outstandingBalance;
+          }
+        });
+
+        const debtEl = document.getElementById('stat-outstanding-debt');
+        if (debtEl) debtEl.textContent = formatCurrency(totalUnsettled);
+
+        const openTransfersEl = document.getElementById('stat-open-transfers-count');
+        if (openTransfersEl) openTransfersEl.textContent = `${suggestedTransfers.length} pending transfers`;
+
+        // Biggest Winner & Loser
+        let biggestWinner = null;
+        let biggestLoser = null;
+
+        Object.values(balances).forEach((b) => {
+          if (!biggestWinner || b.careerGameNet > biggestWinner.careerGameNet) {
+            biggestWinner = b;
+          }
+          if (!biggestLoser || b.careerGameNet < biggestLoser.careerGameNet) {
+            biggestLoser = b;
+          }
+        });
+
+        const winnerEl = document.getElementById('stat-biggest-winner');
+        const winnerAmtEl = document.getElementById('stat-winner-amount');
+        if (winnerEl && winnerAmtEl) {
+          if (biggestWinner && biggestWinner.careerGameNet > 0) {
+            winnerEl.textContent = biggestWinner.player.name;
+            winnerAmtEl.textContent = `+${formatCurrency(biggestWinner.careerGameNet)} career net`;
+          } else {
+            winnerEl.textContent = 'None';
+            winnerAmtEl.textContent = 'No positive gains yet';
+          }
+        }
+
+        const loserEl = document.getElementById('stat-biggest-loser');
+        const loserAmtEl = document.getElementById('stat-loser-amount');
+        if (loserEl && loserAmtEl) {
+          if (biggestLoser && biggestLoser.careerGameNet < 0) {
+            loserEl.textContent = biggestLoser.player.name;
+            loserAmtEl.textContent = `${formatCurrency(biggestLoser.careerGameNet)} career net`;
+          } else {
+            loserEl.textContent = 'None';
+            loserAmtEl.textContent = 'All square';
+          }
+        }
+
+        // Render Suggested Transfers on Dashboard
+        const dashTransfersContainer = document.getElementById('dashboard-suggested-transfers');
+        if (dashTransfersContainer) {
+          if (suggestedTransfers.length === 0) {
+            dashTransfersContainer.innerHTML = `
+              <div class="col-span-full py-6 text-center bg-slate-950/40 rounded-xl border border-slate-800">
+                <div class="inline-flex p-2 rounded-full bg-emerald-500/10 text-emerald-400 mb-2">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                </div>
+                <p class="text-sm font-bold text-white">All debts are fully settled!</p>
+                <p class="text-xs text-slate-400 mt-0.5">No open balances or pending transfers.</p>
+              </div>
+            `;
+          } else {
+            dashTransfersContainer.innerHTML = suggestedTransfers.map((t) => `
+              <div class="bg-slate-950/80 border border-slate-800/80 rounded-xl p-3.5 flex items-center justify-between shadow-sm">
+                <div class="space-y-1">
+                  <div class="text-xs text-slate-400 flex items-center space-x-1.5">
+                    <span class="font-bold text-rose-400">${escapeHtml(t.fromName)}</span>
+                    <span>owes</span>
+                    <span class="font-bold text-emerald-400">${escapeHtml(t.toName)}</span>
+                  </div>
+                  <div class="text-base font-extrabold text-white">${formatCurrency(t.amount)}</div>
+                </div>
+                <button onclick="CardLedger.prefillPaymentModal('${t.fromPlayerId}', '${t.toPlayerId}', ${t.amount})" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition shadow-sm flex items-center space-x-1">
+                  <span>Settle</span>
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                </button>
+              </div>
+            `).join('');
+          }
+        }
+
+        // Render Dashboard Standings Leaderboard
+        const leaderboardContainer = document.getElementById('dashboard-players-leaderboard');
+        if (leaderboardContainer) {
+          const sortedList = Object.values(balances)
+            .filter(b => !b.player.isArchived || b.gamesCount > 0)
+            .sort((a, b) => b.careerGameNet - a.careerGameNet);
+
+          if (sortedList.length === 0) {
+            leaderboardContainer.innerHTML = `
+              <div class="text-xs text-slate-500 text-center py-4">No players created yet.</div>
+            `;
+          } else {
+            leaderboardContainer.innerHTML = sortedList.slice(0, 5).map((b, idx) => {
+              const isProfit = b.careerGameNet > 0;
+              const isEven = b.careerGameNet === 0;
+              return `
+                <div onclick="CardLedger.openPlayerLedger('${b.player.id}')" class="flex items-center justify-between p-2 rounded-xl bg-slate-950/60 border border-slate-800/60 hover:border-slate-700 cursor-pointer transition">
+                  <div class="flex items-center space-x-2.5">
+                    <span class="text-xs font-black w-4 text-slate-500">#${idx + 1}</span>
+                    <div class="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs">
+                      ${b.player.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div class="text-xs font-bold text-white">${escapeHtml(b.player.name)}</div>
+                      <div class="text-[10px] text-slate-400">${b.gamesCount} games</div>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-xs font-bold ${isProfit ? 'text-emerald-400' : isEven ? 'text-slate-400' : 'text-rose-400'}">
+                      ${isProfit ? '+' : ''}${formatCurrency(b.careerGameNet)}
+                    </div>
+                    <div class="text-[10px] text-slate-500">
+                      ${b.outstandingBalance === 0 ? 'Settled' : b.outstandingBalance > 0 ? `Owed ${formatCurrency(b.outstandingBalance)}` : `Owes ${formatCurrency(Math.abs(b.outstandingBalance))}`}
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('');
+          }
+        }
+
+        // Render Recent Sessions
+        const recentSessionsContainer = document.getElementById('dashboard-recent-sessions');
+        if (recentSessionsContainer) {
+          if (state.sessions.length === 0) {
+            recentSessionsContainer.innerHTML = `
+              <div class="text-center py-6 bg-slate-950/40 rounded-xl border border-slate-800/80">
+                <p class="text-xs text-slate-400">No sessions recorded yet.</p>
+                <button onclick="CardLedger.openNewSessionModal()" class="mt-2 text-xs text-indigo-400 font-semibold hover:underline">+ Log your first game</button>
+              </div>
+            `;
+          } else {
+            const sorted = [...state.sessions].sort((a, b) => new Date(b.date) - new Date(a.date));
+            recentSessionsContainer.innerHTML = sorted.slice(0, 3).map((s) => `
+              <div class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 flex items-center justify-between">
+                <div>
+                  <div class="flex items-center space-x-2">
+                    <span class="text-xs font-bold text-white">${escapeHtml(s.title || 'Untitled Game')}</span>
+                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">Balanced</span>
+                  </div>
+                  <div class="text-[11px] text-slate-400 mt-0.5">${formatDateTime(s.date)} • ${s.players.length} players • Vol: ${formatCurrency(s.totalBuyIn)}</div>
+                </div>
+                <button onclick="CardLedger.switchTab('sessions')" class="text-xs text-indigo-400 font-medium hover:text-indigo-300">Details →</button>
+              </div>
+            `).join('');
+          }
+        }
+
+        // Render Recent Payments
+        const recentPaymentsContainer = document.getElementById('dashboard-recent-payments');
+        if (recentPaymentsContainer) {
+          if (state.payments.length === 0) {
+            recentPaymentsContainer.innerHTML = `
+              <div class="text-center py-6 bg-slate-950/40 rounded-xl border border-slate-800/80">
+                <p class="text-xs text-slate-400">No direct payments logged yet.</p>
+              </div>
+            `;
+          } else {
+            const sortedPayments = [...state.payments].sort((a, b) => new Date(b.date) - new Date(a.date));
+            recentPaymentsContainer.innerHTML = sortedPayments.slice(0, 4).map((p) => {
+              const fromP = state.players.find(pl => pl.id === p.fromPlayerId);
+              const toP = state.players.find(pl => pl.id === p.toPlayerId);
+              return `
+                <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800/60 flex items-center justify-between text-xs">
+                  <div class="flex items-center space-x-2">
+                    <span class="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                    </span>
+                    <div>
+                      <span class="font-bold text-white">${escapeHtml(fromP ? fromP.name : 'Unknown')}</span>
+                      <span class="text-slate-400"> paid </span>
+                      <span class="font-bold text-emerald-400">${escapeHtml(toP ? toP.name : 'Unknown')}</span>
+                      <span class="text-[10px] text-slate-500 block">${formatDateTime(p.date)} via ${p.method || 'Cash'}</span>
+                    </div>
+                  </div>
+                  <div class="font-bold text-white">${formatCurrency(p.amount)}</div>
+                </div>
+              `;
+            }).join('');
+          }
+        }
+      };
+
+      // 8. RENDER SESSIONS LIST
+      const renderSessionsList = () => {
+        const container = document.getElementById('sessions-list-container');
+        if (!container) return;
+
+        const countBadge = document.getElementById('sessions-badge-count');
+        if (countBadge) countBadge.textContent = state.sessions.length;
+
+        const searchInput = document.getElementById('session-search-input');
+        const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+        let sessions = [...state.sessions].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        if (query) {
+          sessions = sessions.filter((s) => {
+            const titleMatch = (s.title || '').toLowerCase().includes(query);
+            const notesMatch = (s.notes || '').toLowerCase().includes(query);
+            const playerMatch = (s.players || []).some(p => {
+              const plObj = state.players.find(x => x.id === p.playerId);
+              return plObj && plObj.name.toLowerCase().includes(query);
+            });
+            return titleMatch || notesMatch || playerMatch;
+          });
+        }
+
+        if (sessions.length === 0) {
+          container.innerHTML = `
+            <div class="text-center py-12 bg-slate-900 border border-slate-800 rounded-2xl">
+              <div class="inline-flex p-3 rounded-2xl bg-indigo-500/10 text-indigo-400 mb-3">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              </div>
+              <h3 class="text-base font-bold text-white">No game sessions found</h3>
+              <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto">Click "Record New Session" to log buy-ins and cash-outs from your poker table.</p>
+              <button onclick="CardLedger.openNewSessionModal()" class="mt-4 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg transition">
+                + Record New Session
+              </button>
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = sessions.map((s) => {
+          // Sort players inside session by Net descending
+          const sortedPlayers = [...s.players].sort((a, b) => (b.cashOut - b.buyIn) - (a.cashOut - a.buyIn));
+
+          return `
+            <div class="bg-slate-900 border border-slate-800/90 rounded-2xl overflow-hidden shadow-sm transition hover:border-slate-700">
+              
+              <!-- Session Header Summary -->
+              <div class="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-950/40 border-b border-slate-800/60">
+                <div class="space-y-1">
+                  <div class="flex items-center space-x-2.5">
+                    <h3 class="text-base font-bold text-white">${escapeHtml(s.title || 'Untitled Game Session')}</h3>
+                    <span class="text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">✓ Balanced</span>
+                  </div>
+                  <div class="text-xs text-slate-400 flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span>📅 ${formatDateTime(s.date)}</span>
+                    <span>👥 ${s.players.length} Players</span>
+                    <span>💰 Volume: ${formatCurrency(s.totalBuyIn)}</span>
+                    ${s.notes ? `<span class="italic text-slate-500">"${escapeHtml(s.notes)}"</span>` : ''}
+                  </div>
+                </div>
+
+                <div class="flex items-center space-x-2 self-start sm:self-auto">
+                  <button onclick="CardLedger.editSession('${s.id}')" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs border border-slate-700 transition flex items-center space-x-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                    <span>Edit</span>
+                  </button>
+                  <button onclick="CardLedger.deleteSession('${s.id}')" class="px-3 py-1.5 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 font-semibold text-xs border border-rose-800/60 transition flex items-center space-x-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    <span>Delete</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Session Players Table -->
+              <div class="p-4 overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                  <thead>
+                    <tr class="text-slate-400 font-semibold border-b border-slate-800 pb-2">
+                      <th class="pb-2 px-2">Player</th>
+                      <th class="pb-2 px-2">Total Buy-in</th>
+                      <th class="pb-2 px-2">Total Cash-out</th>
+                      <th class="pb-2 px-2 text-right">Net Profit / Loss</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-800/40 font-medium">
+                    ${sortedPlayers.map((p) => {
+                      const net = (Number(p.cashOut) || 0) - (Number(p.buyIn) || 0);
+                      const isWin = net > 0;
+                      const isEven = net === 0;
+                      const playerObj = state.players.find(x => x.id === p.playerId);
+                      const pName = playerObj ? playerObj.name : (p.playerName || 'Player');
+
+                      return `
+                        <tr>
+                          <td class="py-2.5 px-2 font-bold text-white flex items-center space-x-2">
+                            <span class="w-2 h-2 rounded-full ${isWin ? 'bg-emerald-400' : isEven ? 'bg-slate-500' : 'bg-rose-400'}"></span>
+                            <span class="cursor-pointer hover:underline text-indigo-300" onclick="CardLedger.openPlayerLedger('${p.playerId}')">${escapeHtml(pName)}</span>
+                          </td>
+                          <td class="py-2.5 px-2 text-slate-300">${formatCurrency(p.buyIn)}</td>
+                          <td class="py-2.5 px-2 text-slate-300">${formatCurrency(p.cashOut)}</td>
+                          <td class="py-2.5 px-2 text-right font-extrabold ${isWin ? 'text-emerald-400' : isEven ? 'text-slate-400' : 'text-rose-400'}">
+                            ${isWin ? '+' : ''}${formatCurrency(net)}
+                          </td>
+                        </tr>
+                      `;
+                    }).join('')}
+                  </tbody>
+                </table>
+              </div>
+
+            </div>
+          `;
+        }).join('');
+      };
+
+      // 9. RENDER SETTLEMENTS TAB
+      const renderSettlementsTab = (balances, suggestedTransfers) => {
+        // Suggested Transfers Cards
+        const suggestedContainer = document.getElementById('settlements-suggested-list');
+        if (suggestedContainer) {
+          if (suggestedTransfers.length === 0) {
+            suggestedContainer.innerHTML = `
+              <div class="col-span-full py-8 text-center bg-slate-950/40 rounded-xl border border-slate-800">
+                <div class="inline-flex p-2.5 rounded-full bg-emerald-500/10 text-emerald-400 mb-2">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                </div>
+                <h4 class="text-sm font-bold text-white">Everyone is squared up!</h4>
+                <p class="text-xs text-slate-400 mt-1">No open debts or pending transfers.</p>
+              </div>
+            `;
+          } else {
+            suggestedContainer.innerHTML = suggestedTransfers.map((t) => `
+              <div class="bg-slate-950 border border-slate-800/90 rounded-2xl p-4 flex flex-col justify-between shadow-sm relative overflow-hidden group hover:border-indigo-500/40 transition">
+                <div>
+                  <div class="flex items-center justify-between text-xs text-slate-400 mb-2">
+                    <span class="px-2 py-0.5 rounded-md bg-slate-800 font-mono text-[10px]">Optimal Route</span>
+                    <span class="text-amber-400/90 font-medium">Pending</span>
+                  </div>
+                  <div class="space-y-1">
+                    <div class="text-xs font-bold text-rose-400 flex items-center space-x-1.5">
+                      <span class="w-2 h-2 rounded-full bg-rose-400"></span>
+                      <span>${escapeHtml(t.fromName)}</span>
+                      <span class="text-slate-500 font-normal">(Debtor)</span>
+                    </div>
+                    <div class="text-[10px] text-slate-500 pl-3.5">pays directly to</div>
+                    <div class="text-xs font-bold text-emerald-400 flex items-center space-x-1.5">
+                      <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                      <span>${escapeHtml(t.toName)}</span>
+                      <span class="text-slate-500 font-normal">(Creditor)</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between">
+                  <div class="text-lg font-black text-white">${formatCurrency(t.amount)}</div>
+                  <button onclick="CardLedger.prefillPaymentModal('${t.fromPlayerId}', '${t.toPlayerId}', ${t.amount})" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md transition flex items-center space-x-1.5">
+                    <span>Record Transfer</span>
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                  </button>
+                </div>
+              </div>
+            `).join('');
+          }
+        }
+
+        // Live Balance Matrix Table
+        const tbody = document.getElementById('settlements-balance-matrix-tbody');
+        if (tbody) {
+          const sortedList = Object.values(balances).sort((a, b) => b.outstandingBalance - a.outstandingBalance);
+
+          if (sortedList.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-500">No player accounts found.</td></tr>`;
+          } else {
+            tbody.innerHTML = sortedList.map((b) => {
+              const bal = b.outstandingBalance;
+              const isCreditor = bal > 0.01;
+              const isDebtor = bal < -0.01;
+              const isSettled = !isCreditor && !isDebtor;
+
+              return `
+                <tr class="hover:bg-slate-950/40 transition">
+                  <td class="py-3 px-4 font-bold text-white flex items-center space-x-2">
+                    <span class="w-2 h-2 rounded-full ${isCreditor ? 'bg-emerald-400' : isDebtor ? 'bg-rose-400' : 'bg-slate-500'}"></span>
+                    <span class="cursor-pointer hover:underline text-indigo-300" onclick="CardLedger.openPlayerLedger('${b.player.id}')">${escapeHtml(b.player.name)}</span>
+                    ${b.player.isArchived ? '<span class="text-[9px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">Archived</span>' : ''}
+                  </td>
+                  <td class="py-3 px-4 ${b.careerGameNet > 0 ? 'text-emerald-400' : b.careerGameNet < 0 ? 'text-rose-400' : 'text-slate-400'}">
+                    ${b.careerGameNet > 0 ? '+' : ''}${formatCurrency(b.careerGameNet)}
+                  </td>
+                  <td class="py-3 px-4 text-slate-300">${formatCurrency(b.paymentsMade)}</td>
+                  <td class="py-3 px-4 text-slate-300">${formatCurrency(b.paymentsReceived)}</td>
+                  <td class="py-3 px-4">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-black ${
+                      isCreditor ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                      isDebtor ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' :
+                      'bg-slate-800/80 text-slate-400 border border-slate-700/60'
+                    }">
+                      ${isCreditor ? `Owed +${formatCurrency(bal)}` : isDebtor ? `Owes ${formatCurrency(Math.abs(bal))}` : 'Settled (₹0)'}
+                    </span>
+                  </td>
+                  <td class="py-3 px-4 text-right">
+                    <button onclick="CardLedger.openPlayerLedger('${b.player.id}')" class="text-xs text-indigo-400 hover:text-indigo-300 font-semibold">
+                      Statement →
+                    </button>
+                  </td>
+                </tr>
+              `;
+            }).join('');
+          }
+        }
+
+        // Historic Payments Table
+        const paymentsTbody = document.getElementById('settlements-payments-history-tbody');
+        const paymentsBadge = document.getElementById('payments-count-badge');
+        if (paymentsBadge) paymentsBadge.textContent = `${state.payments.length} Payments`;
+
+        if (paymentsTbody) {
+          if (state.payments.length === 0) {
+            paymentsTbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-500">No payment transactions recorded yet.</td></tr>`;
+          } else {
+            const sortedPayments = [...state.payments].sort((a, b) => new Date(b.date) - new Date(a.date));
+            paymentsTbody.innerHTML = sortedPayments.map((p) => {
+              const fromP = state.players.find(x => x.id === p.fromPlayerId);
+              const toP = state.players.find(x => x.id === p.toPlayerId);
+
+              return `
+                <tr class="hover:bg-slate-950/40 transition">
+                  <td class="py-3 px-4 text-slate-400">${formatDateTime(p.date)}</td>
+                  <td class="py-3 px-4 font-bold text-rose-400">${escapeHtml(fromP ? fromP.name : 'Unknown')}</td>
+                  <td class="py-3 px-4 font-bold text-emerald-400">${escapeHtml(toP ? toP.name : 'Unknown')}</td>
+                  <td class="py-3 px-4 font-black text-white">${formatCurrency(p.amount)}</td>
+                  <td class="py-3 px-4">
+                    <span class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 text-[10px] font-semibold">${escapeHtml(p.method || 'Cash')}</span>
+                  </td>
+                  <td class="py-3 px-4 text-slate-400 text-xs italic">${escapeHtml(p.note || '-')}</td>
+                  <td class="py-3 px-4 text-right space-x-2">
+                    <button onclick="CardLedger.editPayment('${p.id}')" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium">Edit</button>
+                    <button onclick="CardLedger.deletePayment('${p.id}')" class="text-xs text-rose-400 hover:text-rose-300 font-medium">Delete</button>
+                  </td>
+                </tr>
+              `;
+            }).join('');
+          }
+        }
+      };
+
+      // 10. RENDER PLAYERS LIST
+      const setPlayerFilter = (filter) => {
+        activePlayerFilter = filter;
+        ['all', 'active', 'archived'].forEach((f) => {
+          const btn = document.getElementById(`player-filter-${f}`);
+          if (btn) {
+            if (f === filter) {
+              btn.className = 'flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-600 text-white transition';
+            } else {
+              btn.className = 'flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white transition';
+            }
+          }
+        });
+        refreshUI();
+      };
+
+      const renderPlayersList = (balances = null) => {
+        const balancesMap = balances || calculatePlayerBalances();
+        const container = document.getElementById('players-list-grid');
+        if (!container) return;
+
+        const countBadge = document.getElementById('players-badge-count');
+        if (countBadge) countBadge.textContent = state.players.length;
+
+        const searchInput = document.getElementById('player-search-input');
+        const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+        let players = [...state.players];
+
+        if (activePlayerFilter === 'active') {
+          players = players.filter(p => !p.isArchived);
+        } else if (activePlayerFilter === 'archived') {
+          players = players.filter(p => p.isArchived);
+        }
+
+        if (query) {
+          players = players.filter(p => 
+            p.name.toLowerCase().includes(query) || 
+            (p.phone && p.phone.toLowerCase().includes(query)) ||
+            (p.notes && p.notes.toLowerCase().includes(query))
+          );
+        }
+
+        if (players.length === 0) {
+          container.innerHTML = `
+            <div class="col-span-full py-12 text-center bg-slate-900 border border-slate-800 rounded-2xl">
+              <div class="inline-flex p-3 rounded-2xl bg-purple-500/10 text-purple-400 mb-3">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+              </div>
+              <h3 class="text-base font-bold text-white">No players found</h3>
+              <p class="text-xs text-slate-400 mt-1">Add players to start tracking their poker games and buy-in balances.</p>
+              <button onclick="CardLedger.openPlayerModal()" class="mt-4 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-lg transition">
+                + Add New Player
+              </button>
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = players.map((p) => {
+          const b = balancesMap[p.id] || {
+            gamesCount: 0,
+            totalBuyIn: 0,
+            totalCashOut: 0,
+            careerGameNet: 0,
+            outstandingBalance: 0
+          };
+
+          const isNetWin = b.careerGameNet > 0;
+          const isNetEven = b.careerGameNet === 0;
+
+          const bal = b.outstandingBalance;
+          const isCreditor = bal > 0.01;
+          const isDebtor = bal < -0.01;
+
+          return `
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between shadow-sm hover:border-purple-500/30 transition">
+              <div>
+                <!-- Top Player Info -->
+                <div class="flex items-start justify-between gap-2 mb-3">
+                  <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-600/40 to-indigo-600/40 text-white font-extrabold flex items-center justify-center text-sm border border-purple-500/30">
+                      ${p.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div class="flex items-center space-x-2">
+                        <h4 class="text-sm font-bold text-white hover:underline cursor-pointer" onclick="CardLedger.openPlayerLedger('${p.id}')">${escapeHtml(p.name)}</h4>
+                        ${p.isArchived 
+                          ? '<span class="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">Archived</span>' 
+                          : '<span class="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">Active</span>'
+                        }
+                      </div>
+                      ${p.phone ? `<p class="text-[11px] text-slate-400 font-mono mt-0.5">${escapeHtml(p.phone)}</p>` : ''}
+                    </div>
+                  </div>
+
+                  <div class="flex items-center space-x-1">
+                    <button onclick="CardLedger.editPlayer('${p.id}')" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition" title="Edit Player">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                    </button>
+                    <button onclick="CardLedger.togglePlayerArchive('${p.id}')" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition" title="${p.isArchived ? 'Unarchive Player' : 'Archive Player'}">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
+                    </button>
+                  </div>
+                </div>
+
+                ${p.notes ? `<p class="text-xs text-slate-400 italic mb-3">"${escapeHtml(p.notes)}"</p>` : ''}
+
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-2 gap-2 p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 mb-3 text-xs">
+                  <div>
+                    <span class="text-[10px] text-slate-500">Career Game Net</span>
+                    <div class="font-extrabold ${isNetWin ? 'text-emerald-400' : isNetEven ? 'text-slate-400' : 'text-rose-400'}">
+                      ${isNetWin ? '+' : ''}${formatCurrency(b.careerGameNet)}
+                    </div>
+                  </div>
+                  <div>
+                    <span class="text-[10px] text-slate-500">Games Played</span>
+                    <div class="font-extrabold text-white">${b.gamesCount} Sessions</div>
+                  </div>
+                </div>
+
+                <!-- Current Outstanding Balance Pill -->
+                <div class="p-2.5 rounded-xl border flex items-center justify-between text-xs ${
+                  isCreditor ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300' :
+                  isDebtor ? 'bg-rose-500/10 border-rose-500/20 text-rose-300' :
+                  'bg-slate-950/60 border-slate-800 text-slate-400'
+                }">
+                  <span class="text-[11px] font-semibold">Current Balance:</span>
+                  <span class="font-extrabold">${
+                    isCreditor ? `Owed +${formatCurrency(bal)}` :
+                    isDebtor ? `Owes ${formatCurrency(Math.abs(bal))}` :
+                    'Settled (₹0)'
+                  }</span>
+                </div>
+              </div>
+
+              <!-- Action Footer -->
+              <div class="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between">
+                <button onclick="CardLedger.openPlayerLedger('${p.id}')" class="text-xs font-semibold text-purple-400 hover:text-purple-300 flex items-center space-x-1">
+                  <span>View Statement</span>
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </button>
+
+                ${isDebtor ? `
+                  <button onclick="CardLedger.prefillPaymentModal('${p.id}', '', ${Math.abs(bal)})" class="text-xs px-2.5 py-1 rounded-lg bg-indigo-600/80 hover:bg-indigo-600 text-white font-medium transition">
+                    Settle Dues
+                  </button>
+                ` : ''}
+              </div>
+
+            </div>
+          `;
+        }).join('');
+      };
+
+      // 11. RENDER SETTINGS TAB
+      const renderSettingsTab = () => {
+        const curr = (state.config && state.config.currency) || '₹';
+        ['INR', 'USD', 'EUR', 'GBP'].forEach((code) => {
+          const btn = document.getElementById(`curr-btn-${code}`);
+          if (btn) {
+            const sym = code === 'INR' ? '₹' : code === 'USD' ? '$' : code === 'EUR' ? '€' : '£';
+            if (sym === curr) {
+              btn.className = 'curr-btn p-2 rounded-xl bg-indigo-600 text-white font-bold text-sm text-center border border-indigo-500 shadow-md';
+            } else {
+              btn.className = 'curr-btn p-2 rounded-xl bg-slate-800 border border-slate-700 font-bold text-sm text-center text-slate-300 transition hover:border-indigo-500';
+            }
+          }
+        });
+      };
+
+      const setCurrency = (symbol) => {
+        state.config.currency = symbol;
+        saveToStorage();
+        showToast(`Currency changed to ${symbol}`, 'success');
+        refreshUI();
+      };
+
+      // 12. SESSION MODAL WORKFLOW & LIVE ZERO-SUM VALIDATION
+      const openNewSessionModal = () => {
+        document.getElementById('session-modal-title').textContent = 'Record Poker / Card Game Session';
+        document.getElementById('session-form-id').value = '';
+        document.getElementById('session-form-title').value = '';
+        document.getElementById('session-form-date').value = getNowDatetimeInputString();
+        document.getElementById('session-form-notes').value = '';
+
+        // Reset player draft rows
+        activeSessionPlayerRows = [];
+        // By default, add all active players if any exist
+        const activePlayers = state.players.filter(p => !p.isArchived);
+        if (activePlayers.length > 0) {
+          activeSessionPlayerRows = activePlayers.map(p => ({
+            playerId: p.id,
+            buyIn: 1000,
+            cashOut: 1000
+          }));
+        } else {
+          // If no players exist, create one placeholder
+          activeSessionPlayerRows = [{
+            playerId: '',
+            buyIn: 0,
+            cashOut: 0
+          }];
+        }
+
+        renderSessionPlayerRows();
+        validateSessionBalance();
+        document.getElementById('modal-session').classList.remove('hidden');
+      };
+
+      const editSession = (sessionId) => {
+        const session = state.sessions.find(s => s.id === sessionId);
+        if (!session) return;
+
+        document.getElementById('session-modal-title').textContent = 'Edit Poker / Card Game Session';
+        document.getElementById('session-form-id').value = session.id;
+        document.getElementById('session-form-title').value = session.title || '';
+        document.getElementById('session-form-date').value = session.date ? session.date.slice(0, 16) : getNowDatetimeInputString();
+        document.getElementById('session-form-notes').value = session.notes || '';
+
+        activeSessionPlayerRows = JSON.parse(JSON.stringify(session.players || []));
+        renderSessionPlayerRows();
+        validateSessionBalance();
+        document.getElementById('modal-session').classList.remove('hidden');
+      };
+
+      const closeSessionModal = () => {
+        document.getElementById('modal-session').classList.add('hidden');
+      };
+
+      const addPlayerRowToSession = (playerId = '') => {
+        activeSessionPlayerRows.push({
+          playerId: playerId || '',
+          buyIn: 0,
+          cashOut: 0
+        });
+        renderSessionPlayerRows();
+        validateSessionBalance();
+      };
+
+      const addAllActivePlayersToSession = () => {
+        const activePlayers = state.players.filter(p => !p.isArchived);
+        if (activePlayers.length === 0) {
+          showToast('No active players found. Create players first.', 'warning');
+          return;
+        }
+
+        const existingIds = new Set(activeSessionPlayerRows.map(r => r.playerId));
+        activePlayers.forEach((p) => {
+          if (!existingIds.has(p.id)) {
+            activeSessionPlayerRows.push({
+              playerId: p.id,
+              buyIn: 0,
+              cashOut: 0
+            });
+          }
+        });
+
+        renderSessionPlayerRows();
+        validateSessionBalance();
+      };
+
+      const removePlayerRowFromSession = (index) => {
+        activeSessionPlayerRows.splice(index, 1);
+        renderSessionPlayerRows();
+        validateSessionBalance();
+      };
+
+      const updateSessionRowValue = (index, field, value) => {
+        if (!activeSessionPlayerRows[index]) return;
+        activeSessionPlayerRows[index][field] = value;
+        // Don't re-render entire DOM to prevent losing focus; update net in place
+        const netCell = document.getElementById(`session-row-net-${index}`);
+        if (netCell) {
+          const buyIn = Number(activeSessionPlayerRows[index].buyIn) || 0;
+          const cashOut = Number(activeSessionPlayerRows[index].cashOut) || 0;
+          const net = cashOut - buyIn;
+          const isWin = net > 0;
+          const isEven = net === 0;
+          netCell.className = `text-right font-extrabold text-xs w-24 ${isWin ? 'text-emerald-400' : isEven ? 'text-slate-400' : 'text-rose-400'}`;
+          netCell.textContent = `${isWin ? '+' : ''}${formatCurrency(net)}`;
+        }
+        validateSessionBalance();
+      };
+
+      const quickAddBuyIn = (index, amount) => {
+        if (!activeSessionPlayerRows[index]) return;
+        const current = Number(activeSessionPlayerRows[index].buyIn) || 0;
+        const updated = current + amount;
+        activeSessionPlayerRows[index].buyIn = updated;
+        const inputEl = document.getElementById(`session-row-buyin-${index}`);
+        if (inputEl) inputEl.value = updated;
+        updateSessionRowValue(index, 'buyIn', updated);
+      };
+
+      const renderSessionPlayerRows = () => {
+        const container = document.getElementById('session-player-rows-container');
+        if (!container) return;
+
+        // Collect available players (active players + any already selected player)
+        const availablePlayers = state.players.filter(p => !p.isArchived);
+
+        if (activeSessionPlayerRows.length === 0) {
+          container.innerHTML = `
+            <div class="p-6 text-center bg-slate-950 rounded-2xl border border-slate-800 text-slate-500 text-xs">
+              No players added to this session yet. Click "+ Add Player Row".
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = activeSessionPlayerRows.map((row, idx) => {
+          const buyIn = Number(row.buyIn) || 0;
+          const cashOut = Number(row.cashOut) || 0;
+          const net = cashOut - buyIn;
+          const isWin = net > 0;
+          const isEven = net === 0;
+
+          return `
+            <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              
+              <!-- Player Selector -->
+              <div class="flex-1 min-w-[180px]">
+                <select onchange="CardLedger.updateSessionRowValue(${idx}, 'playerId', this.value)" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 font-semibold">
+                  <option value="">-- Select Player --</option>
+                  ${state.players.map((p) => `
+                    <option value="${p.id}" ${p.id === row.playerId ? 'selected' : ''}>
+                      ${escapeHtml(p.name)} ${p.isArchived ? '(Archived)' : ''}
+                    </option>
+                  `).join('')}
+                </select>
+              </div>
+
+              <!-- Buy-in & Quick Chips -->
+              <div class="flex-1">
+                <div class="text-[10px] text-slate-400 mb-1 flex items-center justify-between">
+                  <span>Total Buy-In</span>
+                  <div class="space-x-1">
+                    <button type="button" onclick="CardLedger.quickAddBuyIn(${idx}, 500)" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-[9px]">+500</button>
+                    <button type="button" onclick="CardLedger.quickAddBuyIn(${idx}, 1000)" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-[9px]">+1k</button>
+                  </div>
+                </div>
+                <div class="relative">
+                  <span class="absolute left-3 top-2 text-xs text-slate-500 font-bold">${(state.config && state.config.currency) || '₹'}</span>
+                  <input type="number" step="any" min="0" id="session-row-buyin-${idx}" value="${row.buyIn}" oninput="CardLedger.updateSessionRowValue(${idx}, 'buyIn', this.value)" class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-7 pr-3 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-indigo-500">
+                </div>
+              </div>
+
+              <!-- Cash-out -->
+              <div class="flex-1">
+                <div class="text-[10px] text-slate-400 mb-1">Final Cash-Out</div>
+                <div class="relative">
+                  <span class="absolute left-3 top-2 text-xs text-slate-500 font-bold">${(state.config && state.config.currency) || '₹'}</span>
+                  <input type="number" step="any" min="0" id="session-row-cashout-${idx}" value="${row.cashOut}" oninput="CardLedger.updateSessionRowValue(${idx}, 'cashOut', this.value)" class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-7 pr-3 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-indigo-500">
+                </div>
+              </div>
+
+              <!-- Net Net & Actions -->
+              <div class="flex items-center justify-between sm:justify-end space-x-3 pt-2 sm:pt-4">
+                <div id="session-row-net-${idx}" class="text-right font-extrabold text-xs w-24 ${isWin ? 'text-emerald-400' : isEven ? 'text-slate-400' : 'text-rose-400'}">
+                  ${isWin ? '+' : ''}${formatCurrency(net)}
+                </div>
+                <button type="button" onclick="CardLedger.removePlayerRowFromSession(${idx})" class="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-slate-800 transition" title="Remove Player">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                </button>
+              </div>
+
+            </div>
+          `;
+        }).join('');
+      };
+
+      const validateSessionBalance = () => {
+        let totalBuyIn = 0;
+        let totalCashOut = 0;
+
+        activeSessionPlayerRows.forEach((r) => {
+          totalBuyIn += Number(r.buyIn) || 0;
+          totalCashOut += Number(r.cashOut) || 0;
+        });
+
+        const discrepancy = Math.round((totalCashOut - totalBuyIn) * 100) / 100;
+        const isBalanced = Math.abs(discrepancy) <= 0.01;
+
+        const guardEl = document.getElementById('session-balance-guard');
+        const saveBtn = document.getElementById('session-save-btn');
+
+        if (!guardEl) return;
+
+        if (isBalanced) {
+          guardEl.className = 'p-4 rounded-2xl border bg-emerald-950/40 border-emerald-800/80 text-emerald-200 transition-all';
+          guardEl.innerHTML = `
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div class="flex items-center space-x-2">
+                <svg class="w-5 h-5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                <div>
+                  <div class="text-xs font-bold text-white">✓ Ledger Perfectly Balanced</div>
+                  <div class="text-[11px] text-emerald-400/80">Total Buy-in: ${formatCurrency(totalBuyIn)} == Total Cash-out: ${formatCurrency(totalCashOut)}</div>
+                </div>
+              </div>
+              <span class="text-xs font-black text-emerald-400 font-mono">Discrepancy: ₹0.00</span>
+            </div>
+          `;
+          if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+          }
+        } else {
+          guardEl.className = 'p-4 rounded-2xl border bg-rose-950/40 border-rose-800/80 text-rose-200 transition-all';
+          guardEl.innerHTML = `
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div class="flex items-center space-x-2">
+                <svg class="w-5 h-5 text-rose-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                <div>
+                  <div class="text-xs font-bold text-white">⚠ Discrepancy Detected (Ledger Unbalanced)</div>
+                  <div class="text-[11px] text-rose-300">
+                    Buy-ins: ${formatCurrency(totalBuyIn)} | Cash-outs: ${formatCurrency(totalCashOut)} 
+                    (${discrepancy > 0 ? `+${formatCurrency(discrepancy)} extra cash-out` : `${formatCurrency(discrepancy)} missing cash-out`})
+                  </div>
+                </div>
+              </div>
+              <div class="text-xs font-black text-rose-400 font-mono">
+                ${discrepancy > 0 ? `+${formatCurrency(discrepancy)}` : formatCurrency(discrepancy)}
+              </div>
+            </div>
+          `;
+          if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.classList.add('opacity-50', 'cursor-not-allowed');
+          }
+        }
+
+        return isBalanced;
+      };
+
+      const saveSession = () => {
+        const title = (document.getElementById('session-form-title').value || '').trim();
+        const date = document.getElementById('session-form-date').value;
+        const notes = (document.getElementById('session-form-notes').value || '').trim();
+        const sessionId = document.getElementById('session-form-id').value;
+
+        if (!title) {
+          showToast('Please enter a Game Title.', 'warning');
+          return;
+        }
+
+        if (!date) {
+          showToast('Please choose a Date & Time.', 'warning');
+          return;
+        }
+
+        // Validate player rows
+        if (activeSessionPlayerRows.length === 0) {
+          showToast('Please add at least one player to the session.', 'warning');
+          return;
+        }
+
+        // Check for empty player selections or duplicate players
+        const selectedIds = [];
+        for (let i = 0; i < activeSessionPlayerRows.length; i++) {
+          const pid = activeSessionPlayerRows[i].playerId;
+          if (!pid) {
+            showToast(`Row #${i + 1} has no player selected.`, 'warning');
+            return;
+          }
+          if (selectedIds.includes(pid)) {
+            const pObj = state.players.find(x => x.id === pid);
+            showToast(`Player "${pObj ? pObj.name : pid}" is added more than once.`, 'warning');
+            return;
+          }
+          selectedIds.push(pid);
+        }
+
+        // Validate zero-sum
+        let totalBuyIn = 0;
+        let totalCashOut = 0;
+        activeSessionPlayerRows.forEach((r) => {
+          totalBuyIn += Number(r.buyIn) || 0;
+          totalCashOut += Number(r.cashOut) || 0;
+        });
+
+        const discrepancy = Math.round((totalCashOut - totalBuyIn) * 100) / 100;
+        if (Math.abs(discrepancy) > 0.01) {
+          showToast(`Cannot save: Buy-ins (${totalBuyIn}) must equal Cash-outs (${totalCashOut}).`, 'error');
+          return;
+        }
+
+        // Prepare session object
+        const sessionPayload = {
+          id: sessionId || uid('ses'),
+          title,
+          date,
+          notes,
+          players: activeSessionPlayerRows.map(r => ({
+            playerId: r.playerId,
+            buyIn: Number(r.buyIn) || 0,
+            cashOut: Number(r.cashOut) || 0,
+            net: (Number(r.cashOut) || 0) - (Number(r.buyIn) || 0)
+          })),
+          totalBuyIn,
+          totalCashOut,
+          isBalanced: true,
+          updatedAt: new Date().toISOString()
+        };
+
+        if (sessionId) {
+          // Edit existing
+          const idx = state.sessions.findIndex(s => s.id === sessionId);
+          if (idx !== -1) {
+            state.sessions[idx] = sessionPayload;
+            showToast('Session updated successfully!', 'success');
+          }
+        } else {
+          // Create new
+          sessionPayload.createdAt = new Date().toISOString();
+          state.sessions.unshift(sessionPayload);
+          showToast('New session recorded successfully!', 'success');
+        }
+
+        saveToStorage();
+        closeSessionModal();
+        refreshUI();
+      };
+
+      const deleteSession = (sessionId) => {
+        if (!confirm('Are you sure you want to delete this game session? Player balances and debt graphs will update immediately.')) {
+          return;
+        }
+
+        state.sessions = state.sessions.filter(s => s.id !== sessionId);
+        saveToStorage();
+        showToast('Session deleted.', 'info');
+        refreshUI();
+      };
+
+      // 13. SETTLEMENT & PAYMENT RECORDER WORKFLOW
+      const populatePaymentDropdowns = (fromId = '', toId = '') => {
+        const fromSelect = document.getElementById('payment-form-from');
+        const toSelect = document.getElementById('payment-form-to');
+        if (!fromSelect || !toSelect) return;
+
+        const balances = calculatePlayerBalances();
+
+        // Separate debtors (people with negative balances) and others
+        const sortedPlayers = [...state.players].sort((a, b) => a.name.localeCompare(b.name));
+
+        const getOptionLabel = (player) => {
+          const b = balances[player.id];
+          const bal = b ? b.outstandingBalance : 0;
+          let debtHint = '';
+          if (bal < -0.01) {
+            debtHint = ` (Owes ${formatCurrency(Math.abs(bal))})`;
+          } else if (bal > 0.01) {
+            debtHint = ` (Owed +${formatCurrency(bal)})`;
+          } else {
+            debtHint = ` (Settled)`;
+          }
+          return `${player.name}${debtHint}${player.isArchived ? ' [Archived]' : ''}`;
+        };
+
+        fromSelect.innerHTML = `<option value="">-- Choose Debtor (Paid By) --</option>` +
+          sortedPlayers.map(p => `<option value="${p.id}" ${p.id === fromId ? 'selected' : ''}>${escapeHtml(getOptionLabel(p))}</option>`).join('');
+
+        toSelect.innerHTML = `<option value="">-- Choose Creditor (Paid To) --</option>` +
+          sortedPlayers.map(p => `<option value="${p.id}" ${p.id === toId ? 'selected' : ''}>${escapeHtml(getOptionLabel(p))}</option>`).join('');
+
+        onPaymentPlayerChange();
+      };
+
+      const onPaymentPlayerChange = () => {
+        const fromSelect = document.getElementById('payment-form-from');
+        const toSelect = document.getElementById('payment-form-to');
+        const fromHint = document.getElementById('payment-from-balance-hint');
+        const toHint = document.getElementById('payment-to-balance-hint');
+        const autoFillBtn = document.getElementById('payment-auto-fill-btn');
+
+        if (!fromSelect || !toSelect) return;
+
+        const fromId = fromSelect.value;
+        const toId = toSelect.value;
+        const balances = calculatePlayerBalances();
+
+        if (fromHint) {
+          if (fromId && balances[fromId]) {
+            const b = balances[fromId].outstandingBalance;
+            fromHint.innerHTML = b < -0.01 
+              ? `<span class="text-rose-400 font-bold">Currently owes ${formatCurrency(Math.abs(b))}</span>`
+              : `<span class="text-slate-400">Current balance: ${formatCurrency(b)}</span>`;
+          } else {
+            fromHint.textContent = '';
+          }
+        }
+
+        if (toHint) {
+          if (toId && balances[toId]) {
+            const b = balances[toId].outstandingBalance;
+            toHint.innerHTML = b > 0.01 
+              ? `<span class="text-emerald-400 font-bold">Currently owed ${formatCurrency(b)}</span>`
+              : `<span class="text-slate-400">Current balance: ${formatCurrency(b)}</span>`;
+          } else {
+            toHint.textContent = '';
+          }
+        }
+
+        // Show/hide auto fill button
+        if (autoFillBtn) {
+          if (fromId && toId && fromId !== toId) {
+            autoFillBtn.classList.remove('hidden');
+          } else {
+            autoFillBtn.classList.add('hidden');
+          }
+        }
+      };
+
+      const autoFillSettlementAmount = () => {
+        const fromId = document.getElementById('payment-form-from').value;
+        const toId = document.getElementById('payment-form-to').value;
+        if (!fromId || !toId) return;
+
+        const balances = calculatePlayerBalances();
+        const fromDebt = balances[fromId] ? Math.abs(balances[fromId].outstandingBalance) : 0;
+        const toCredit = balances[toId] ? balances[toId].outstandingBalance : 0;
+
+        const maxSuggested = Math.min(fromDebt, toCredit);
+        const fillAmount = maxSuggested > 0 ? maxSuggested : (fromDebt > 0 ? fromDebt : 100);
+
+        document.getElementById('payment-form-amount').value = Math.round(fillAmount * 100) / 100;
+      };
+
+      const setPaymentMethod = (method) => {
+        document.getElementById('payment-form-method').value = method;
+        ['UPI', 'Cash', 'Bank', 'Other'].forEach((m) => {
+          const btn = document.getElementById(`pm-btn-${m}`);
+          if (btn) {
+            if (m === method) {
+              btn.className = 'pm-btn p-2 rounded-xl bg-indigo-600 text-white font-bold text-xs text-center border border-indigo-500 shadow-sm';
+            } else {
+              btn.className = 'pm-btn p-2 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs text-center border border-slate-700 hover:border-slate-600';
+            }
+          }
+        });
+      };
+
+      const openNewPaymentModal = () => {
+        document.getElementById('payment-modal-title').textContent = 'Record Settlement Payment';
+        document.getElementById('payment-form-id').value = '';
+        document.getElementById('payment-form-amount').value = '';
+        document.getElementById('payment-form-date').value = getNowDatetimeInputString();
+        document.getElementById('payment-form-note').value = '';
+        document.getElementById('payment-curr-symbol').textContent = (state.config && state.config.currency) || '₹';
+        setPaymentMethod('UPI');
+
+        populatePaymentDropdowns();
+        document.getElementById('modal-payment').classList.remove('hidden');
+      };
+
+      const prefillPaymentModal = (fromPlayerId, toPlayerId, amount) => {
+        openNewPaymentModal();
+        populatePaymentDropdowns(fromPlayerId, toPlayerId);
+        if (amount) {
+          document.getElementById('payment-form-amount').value = amount;
+        }
+      };
+
+      const editPayment = (paymentId) => {
+        const payment = state.payments.find(p => p.id === paymentId);
+        if (!payment) return;
+
+        document.getElementById('payment-modal-title').textContent = 'Edit Settlement Payment';
+        document.getElementById('payment-form-id').value = payment.id;
+        document.getElementById('payment-form-amount').value = payment.amount;
+        document.getElementById('payment-form-date').value = payment.date ? payment.date.slice(0, 16) : getNowDatetimeInputString();
+        document.getElementById('payment-form-note').value = payment.note || '';
+        document.getElementById('payment-curr-symbol').textContent = (state.config && state.config.currency) || '₹';
+        setPaymentMethod(payment.method || 'Cash');
+
+        populatePaymentDropdowns(payment.fromPlayerId, payment.toPlayerId);
+        document.getElementById('modal-payment').classList.remove('hidden');
+      };
+
+      const closePaymentModal = () => {
+        document.getElementById('modal-payment').classList.add('hidden');
+      };
+
+      const savePayment = () => {
+        const fromPlayerId = document.getElementById('payment-form-from').value;
+        const toPlayerId = document.getElementById('payment-form-to').value;
+        const amount = Number(document.getElementById('payment-form-amount').value) || 0;
+        const date = document.getElementById('payment-form-date').value;
+        const method = document.getElementById('payment-form-method').value || 'UPI';
+        const note = (document.getElementById('payment-form-note').value || '').trim();
+        const paymentId = document.getElementById('payment-form-id').value;
+
+        if (!fromPlayerId) {
+          showToast('Please select who paid (Paid By).', 'warning');
+          return;
+        }
+
+        if (!toPlayerId) {
+          showToast('Please select who received the payment (Paid To).', 'warning');
+          return;
+        }
+
+        if (fromPlayerId === toPlayerId) {
+          showToast('Paid By and Paid To cannot be the same person!', 'error');
+          return;
+        }
+
+        if (amount <= 0) {
+          showToast('Please enter an amount greater than 0.', 'warning');
+          return;
+        }
+
+        if (!date) {
+          showToast('Please select date and time.', 'warning');
+          return;
+        }
+
+        const payload = {
+          id: paymentId || uid('pay'),
+          fromPlayerId,
+          toPlayerId,
+          amount,
+          date,
+          method,
+          note,
+          updatedAt: new Date().toISOString()
+        };
+
+        if (paymentId) {
+          const idx = state.payments.findIndex(p => p.id === paymentId);
+          if (idx !== -1) {
+            state.payments[idx] = payload;
+            showToast('Payment updated successfully!', 'success');
+          }
+        } else {
+          payload.createdAt = new Date().toISOString();
+          state.payments.unshift(payload);
+          showToast('Payment recorded successfully!', 'success');
+        }
+
+        saveToStorage();
+        closePaymentModal();
+        refreshUI();
+      };
+
+      const deletePayment = (paymentId) => {
+        if (!confirm('Are you sure you want to delete this payment record? Balances will be recalculated.')) {
+          return;
+        }
+
+        state.payments = state.payments.filter(p => p.id !== paymentId);
+        saveToStorage();
+        showToast('Payment deleted.', 'info');
+        refreshUI();
+      };
+
+      // 14. PLAYER PROFILES WORKFLOW
+      const openPlayerModal = () => {
+        document.getElementById('player-modal-title').textContent = 'Add Player';
+        document.getElementById('player-form-id').value = '';
+        document.getElementById('player-form-name').value = '';
+        document.getElementById('player-form-phone').value = '';
+        document.getElementById('player-form-notes').value = '';
+        document.getElementById('player-form-active').checked = true;
+
+        document.getElementById('modal-player').classList.remove('hidden');
+      };
+
+      const editPlayer = (playerId) => {
+        const player = state.players.find(p => p.id === playerId);
+        if (!player) return;
+
+        document.getElementById('player-modal-title').textContent = 'Edit Player';
+        document.getElementById('player-form-id').value = player.id;
+        document.getElementById('player-form-name').value = player.name || '';
+        document.getElementById('player-form-phone').value = player.phone || '';
+        document.getElementById('player-form-notes').value = player.notes || '';
+        document.getElementById('player-form-active').checked = !player.isArchived;
+
+        document.getElementById('modal-player').classList.remove('hidden');
+      };
+
+      const closePlayerModal = () => {
+        document.getElementById('modal-player').classList.add('hidden');
+      };
+
+      const savePlayer = () => {
+        const name = (document.getElementById('player-form-name').value || '').trim();
+        const phone = (document.getElementById('player-form-phone').value || '').trim();
+        const notes = (document.getElementById('player-form-notes').value || '').trim();
+        const isActive = document.getElementById('player-form-active').checked;
+        const playerId = document.getElementById('player-form-id').value;
+
+        if (!name) {
+          showToast('Please enter a player name.', 'warning');
+          return;
+        }
+
+        // Check for duplicates
+        const existing = state.players.find(p => p.name.toLowerCase() === name.toLowerCase() && p.id !== playerId);
+        if (existing) {
+          showToast(`A player named "${name}" already exists.`, 'warning');
+          return;
+        }
+
+        if (playerId) {
+          const idx = state.players.findIndex(p => p.id === playerId);
+          if (idx !== -1) {
+            state.players[idx] = Object.assign({}, state.players[idx], {
+              name,
+              phone,
+              notes,
+              isArchived: !isActive,
+              updatedAt: new Date().toISOString()
+            });
+            showToast('Player profile updated.', 'success');
+          }
+        } else {
+          state.players.push({
+            id: uid('ply'),
+            name,
+            phone,
+            notes,
+            isArchived: !isActive,
+            createdAt: new Date().toISOString()
+          });
+          showToast(`Player "${name}" added.`, 'success');
+        }
+
+        saveToStorage();
+        closePlayerModal();
+        refreshUI();
+      };
+
+      const togglePlayerArchive = (playerId) => {
+        const player = state.players.find(p => p.id === playerId);
+        if (!player) return;
+
+        player.isArchived = !player.isArchived;
+        saveToStorage();
+        showToast(`Player "${player.name}" is now ${player.isArchived ? 'Archived' : 'Active'}.`, 'info');
+        refreshUI();
+      };
+
+      // 15. INDIVIDUAL PLAYER LEDGER & TIMELINE
+      const openPlayerLedger = (playerId) => {
+        activeLedgerPlayerId = playerId;
+        const player = state.players.find(p => p.id === playerId);
+        if (!player) return;
+
+        const balances = calculatePlayerBalances();
+        const b = balances[playerId] || {
+          gamesCount: 0,
+          careerGameNet: 0,
+          paymentsMade: 0,
+          paymentsReceived: 0,
+          outstandingBalance: 0
+        };
+
+        // Header info
+        document.getElementById('ledger-player-name').textContent = player.name;
+        document.getElementById('ledger-avatar').textContent = player.name.charAt(0).toUpperCase();
+        document.getElementById('ledger-player-phone').textContent = player.phone ? `Phone: ${player.phone}` : 'No phone specified';
+
+        const statusBadge = document.getElementById('ledger-status-badge');
+        if (statusBadge) {
+          statusBadge.textContent = player.isArchived ? 'Archived' : 'Active';
+          statusBadge.className = player.isArchived 
+            ? 'text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700' 
+            : 'text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold';
+        }
+
+        // Summary stats ribbon
+        document.getElementById('ledger-stat-games').textContent = `${b.gamesCount} games`;
+        
+        const netEl = document.getElementById('ledger-stat-career-net');
+        netEl.textContent = `${b.careerGameNet > 0 ? '+' : ''}${formatCurrency(b.careerGameNet)}`;
+        netEl.className = `text-sm font-bold mt-0.5 ${b.careerGameNet > 0 ? 'text-emerald-400' : b.careerGameNet < 0 ? 'text-rose-400' : 'text-slate-400'}`;
+
+        const settledEl = document.getElementById('ledger-stat-net-payments');
+        const netPaymentsEffect = b.paymentsMade - b.paymentsReceived;
+        settledEl.textContent = formatCurrency(Math.abs(netPaymentsEffect));
+        settledEl.className = `text-sm font-bold text-indigo-400 mt-0.5`;
+
+        const curBalEl = document.getElementById('ledger-stat-current-balance');
+        const bal = b.outstandingBalance;
+        curBalEl.textContent = bal > 0.01 ? `Owed +${formatCurrency(bal)}` : bal < -0.01 ? `Owes ${formatCurrency(Math.abs(bal))}` : 'Settled (₹0)';
+        curBalEl.className = `text-sm font-extrabold mt-0.5 ${bal > 0.01 ? 'text-emerald-400' : bal < -0.01 ? 'text-rose-400' : 'text-slate-400'}`;
+
+        // Build Chronological Timeline
+        const events = [];
+
+        // 1. Sessions involving this player
+        state.sessions.forEach((s) => {
+          const sp = (s.players || []).find(x => x.playerId === playerId);
+          if (sp) {
+            const net = (Number(sp.cashOut) || 0) - (Number(sp.buyIn) || 0);
+            events.push({
+              type: 'session',
+              date: s.date,
+              title: s.title || 'Game Session',
+              buyIn: Number(sp.buyIn) || 0,
+              cashOut: Number(sp.cashOut) || 0,
+              net: net,
+              sessionId: s.id
+            });
+          }
+        });
+
+        // 2. Payments made by this player
+        state.payments.forEach((p) => {
+          if (p.fromPlayerId === playerId) {
+            const toP = state.players.find(x => x.id === p.toPlayerId);
+            events.push({
+              type: 'payment_out',
+              date: p.date,
+              amount: Number(p.amount) || 0,
+              counterPartyName: toP ? toP.name : 'Unknown',
+              method: p.method,
+              note: p.note
+            });
+          }
+        });
+
+        // 3. Payments received by this player
+        state.payments.forEach((p) => {
+          if (p.toPlayerId === playerId) {
+            const fromP = state.players.find(x => x.id === p.fromPlayerId);
+            events.push({
+              type: 'payment_in',
+              date: p.date,
+              amount: Number(p.amount) || 0,
+              counterPartyName: fromP ? fromP.name : 'Unknown',
+              method: p.method,
+              note: p.note
+            });
+          }
+        });
+
+        // Sort events chronological ascending to track running balance, then reverse for display
+        events.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        let runningBalance = 0;
+        events.forEach((ev) => {
+          if (ev.type === 'session') {
+            runningBalance += ev.net;
+          } else if (ev.type === 'payment_out') {
+            // Player paid someone: reduces debt / increases positive balance
+            runningBalance += ev.amount;
+          } else if (ev.type === 'payment_in') {
+            // Player received payment: reduces credit / decreases positive balance
+            runningBalance -= ev.amount;
+          }
+          ev.runningBalance = Math.round(runningBalance * 100) / 100;
+        });
+
+        // Now reverse for newest first display
+        events.reverse();
+
+        const timelineContainer = document.getElementById('ledger-timeline-container');
+        if (timelineContainer) {
+          if (events.length === 0) {
+            timelineContainer.innerHTML = `
+              <div class="p-8 text-center bg-slate-950/60 rounded-2xl border border-slate-800 text-slate-500 text-xs">
+                No session entries or settlement payments recorded for this player yet.
+              </div>
+            `;
+          } else {
+            timelineContainer.innerHTML = events.map((ev) => {
+              if (ev.type === 'session') {
+                const isWin = ev.net > 0;
+                const isEven = ev.net === 0;
+                return `
+                  <div class="p-3.5 rounded-2xl bg-slate-950 border border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div class="flex items-start space-x-3">
+                      <div class="p-2 rounded-xl bg-purple-500/10 text-purple-400 mt-0.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/></svg>
+                      </div>
+                      <div>
+                        <div class="text-xs font-bold text-white flex items-center space-x-1.5">
+                          <span>${escapeHtml(ev.title)}</span>
+                          <span class="text-[9px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 font-normal">Game</span>
+                        </div>
+                        <div class="text-[11px] text-slate-400 mt-0.5">
+                          Buy-in: ${formatCurrency(ev.buyIn)} • Cash-out: ${formatCurrency(ev.cashOut)}
+                        </div>
+                        <div class="text-[10px] text-slate-500 mt-0.5">${formatDateTime(ev.date)}</div>
+                      </div>
+                    </div>
+
+                    <div class="text-left sm:text-right">
+                      <div class="text-xs font-black ${isWin ? 'text-emerald-400' : isEven ? 'text-slate-400' : 'text-rose-400'}">
+                        ${isWin ? '+' : ''}${formatCurrency(ev.net)}
+                      </div>
+                      <div class="text-[10px] text-slate-500 mt-0.5 font-mono">
+                        Running: ${ev.runningBalance > 0 ? `+${formatCurrency(ev.runningBalance)}` : formatCurrency(ev.runningBalance)}
+                      </div>
+                    </div>
+                  </div>
+                `;
+              } else if (ev.type === 'payment_out') {
+                return `
+                  <div class="p-3.5 rounded-2xl bg-slate-950 border border-indigo-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div class="flex items-start space-x-3">
+                      <div class="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 mt-0.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                      </div>
+                      <div>
+                        <div class="text-xs font-bold text-indigo-300">
+                          Paid ${formatCurrency(ev.amount)} to ${escapeHtml(ev.counterPartyName)}
+                        </div>
+                        <div class="text-[11px] text-slate-400 mt-0.5">
+                          Method: ${escapeHtml(ev.method || 'Cash')} ${ev.note ? `• "${escapeHtml(ev.note)}"` : ''}
+                        </div>
+                        <div class="text-[10px] text-slate-500 mt-0.5">${formatDateTime(ev.date)}</div>
+                      </div>
+                    </div>
+
+                    <div class="text-left sm:text-right">
+                      <div class="text-xs font-black text-indigo-400">+${formatCurrency(ev.amount)} (Debt Settled)</div>
+                      <div class="text-[10px] text-slate-500 mt-0.5 font-mono">
+                        Running: ${ev.runningBalance > 0 ? `+${formatCurrency(ev.runningBalance)}` : formatCurrency(ev.runningBalance)}
+                      </div>
+                    </div>
+                  </div>
+                `;
+              } else if (ev.type === 'payment_in') {
+                return `
+                  <div class="p-3.5 rounded-2xl bg-slate-950 border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div class="flex items-start space-x-3">
+                      <div class="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 mt-0.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                      </div>
+                      <div>
+                        <div class="text-xs font-bold text-emerald-300">
+                          Received ${formatCurrency(ev.amount)} from ${escapeHtml(ev.counterPartyName)}
+                        </div>
+                        <div class="text-[11px] text-slate-400 mt-0.5">
+                          Method: ${escapeHtml(ev.method || 'Cash')} ${ev.note ? `• "${escapeHtml(ev.note)}"` : ''}
+                        </div>
+                        <div class="text-[10px] text-slate-500 mt-0.5">${formatDateTime(ev.date)}</div>
+                      </div>
+                    </div>
+
+                    <div class="text-left sm:text-right">
+                      <div class="text-xs font-black text-emerald-400">-${formatCurrency(ev.amount)} (Credit Received)</div>
+                      <div class="text-[10px] text-slate-500 mt-0.5 font-mono">
+                        Running: ${ev.runningBalance > 0 ? `+${formatCurrency(ev.runningBalance)}` : formatCurrency(ev.runningBalance)}
+                      </div>
+                    </div>
+                  </div>
+                `;
+              }
+            }).join('');
+          }
+        }
+
+        document.getElementById('modal-player-ledger').classList.remove('hidden');
+      };
+
+      const closePlayerLedgerModal = () => {
+        document.getElementById('modal-player-ledger').classList.add('hidden');
+      };
+
+      const copyPlayerStatement = () => {
+        if (!activeLedgerPlayerId) return;
+        const player = state.players.find(p => p.id === activeLedgerPlayerId);
+        if (!player) return;
+
+        const balances = calculatePlayerBalances();
+        const b = balances[activeLedgerPlayerId];
+        if (!b) return;
+
+        const bal = b.outstandingBalance;
+        let balText = '';
+        if (bal > 0.01) {
+          balText = `You are owed: ${formatCurrency(bal)}`;
+        } else if (bal < -0.01) {
+          balText = `You owe: ${formatCurrency(Math.abs(bal))}`;
+        } else {
+          balText = `All squared up! (₹0 outstanding)`;
+        }
+
+        const text = `🃏 *CardLedger Statement for ${player.name}*\n` +
+          `• Total Games: ${b.gamesCount}\n` +
+          `• Total Buy-ins: ${formatCurrency(b.totalBuyIn)}\n` +
+          `• Total Cash-outs: ${formatCurrency(b.totalCashOut)}\n` +
+          `• Career Game Net: ${b.careerGameNet > 0 ? '+' : ''}${formatCurrency(b.careerGameNet)}\n` +
+          `• Net Settlements Paid: ${formatCurrency(b.paymentsMade)}\n` +
+          `• Net Settlements Received: ${formatCurrency(b.paymentsReceived)}\n` +
+          `\n👉 *Current Outstanding Status:* ${balText}\n` +
+          `Generated on: ${new Date().toLocaleDateString()}`;
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(() => {
+            showToast('Statement copied to clipboard! Ready to paste into WhatsApp.', 'success');
+          }).catch(() => {
+            prompt('Copy Statement:', text);
+          });
+        } else {
+          prompt('Copy Statement:', text);
+        }
+      };
+
+      const copySettlementPlan = () => {
+        const balances = calculatePlayerBalances();
+        const transfers = calculateSuggestedTransfers(balances);
+
+        if (transfers.length === 0) {
+          showToast('No pending transfers! All debts are currently settled.', 'info');
+          return;
+        }
+
+        let planText = `🃏 *CardLedger - Poker Debt Settlement Plan*\n\n`;
+        transfers.forEach((t, i) => {
+          planText += `${i + 1}. *${t.fromName}* pays *${t.toName}* 👉 ${formatCurrency(t.amount)}\n`;
+        });
+        planText += `\n✅ This settles all open game debts across all players with minimum transfers.`;
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(planText).then(() => {
+            showToast('Settlement plan copied to clipboard!', 'success');
+          }).catch(() => {
+            prompt('Copy Plan:', planText);
+          });
+        } else {
+          prompt('Copy Plan:', planText);
+        }
+      };
+
+      // 16. JSON EXPORT, IMPORT & DEMO DATA
+      const exportDataJSON = () => {
+        try {
+          const jsonStr = JSON.stringify(state, null, 2);
+          const blob = new Blob([jsonStr], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          const dateStr = new Date().toISOString().slice(0, 10);
+          a.href = url;
+          a.download = `cardledger-backup-${dateStr}.json`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          showToast('JSON backup exported successfully!', 'success');
+        } catch (e) {
+          console.error(e);
+          showToast('Failed to export JSON file.', 'error');
+        }
+      };
+
+      const importDataJSON = (event) => {
+        const file = event.target.files && event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const parsed = JSON.parse(e.target.result);
+            if (!parsed || !Array.isArray(parsed.players) || !Array.isArray(parsed.sessions)) {
+              showToast('Invalid CardLedger backup file structure.', 'error');
+              return;
+            }
+
+            if (!confirm('Importing this file will merge/replace existing data. Are you sure you want to proceed?')) {
+              return;
+            }
+
+            state = {
+              config: Object.assign({}, DEFAULT_STATE.config, parsed.config || {}),
+              players: parsed.players || [],
+              sessions: parsed.sessions || [],
+              payments: parsed.payments || []
+            };
+
+            saveToStorage();
+            showToast('CardLedger data imported successfully!', 'success');
+            refreshUI();
+          } catch (err) {
+            console.error('Import error:', err);
+            showToast('Corrupted or invalid JSON file.', 'error');
+          }
+        };
+        reader.readAsText(file);
+      };
+
+      const resetAllData = () => {
+        if (!confirm('CAUTION: This will delete ALL players, sessions, and payments! This action cannot be undone. Continue?')) {
+          return;
+        }
+        if (!confirm('FINAL CONFIRMATION: Are you 100% sure you want to wipe CardLedger?')) {
+          return;
+        }
+
+        state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+        saveToStorage();
+        showToast('All CardLedger data reset to defaults.', 'info');
+        refreshUI();
+      };
+
+      const loadSampleData = () => {
+        const samplePlayers = [
+          { id: 'ply_Meet', name: 'Vikram Mehta', phone: '+91 98765 11111', notes: 'Table Host / Aggressive', isArchived: false, createdAt: '2026-10-01T10:00:00.000Z' },
+          { id: 'ply_Dhrish', name: 'Aman Sharma', phone: '+91 98765 22222', notes: 'Tight player', isArchived: false, createdAt: '2026-10-01T10:00:00.000Z' },
+          { id: 'ply_Shahil', name: 'Rohan Verma', phone: '+91 98765 33333', notes: 'Loose cannon', isArchived: false, createdAt: '2026-10-01T10:00:00.000Z' },
+          { id: 'ply_Nisarg', name: 'Pooja Iyer', phone: '+91 98765 44444', notes: 'Strategic bettor', isArchived: false, createdAt: '2026-10-01T10:00:00.000Z' },
+          { id: 'ply_Het', name: 'Kabir Das', phone: '+91 98765 55555', notes: 'Wild card player', isArchived: false, createdAt: '2026-10-01T10:00:00.000Z' }
+          ,{ id: 'ply_Nishit', name: 'Kabir Das', phone: '+91 98765 55555', notes: 'Wild card player', isArchived: false, createdAt: '2026-10-01T10:00:00.000Z' }
+        ];
+
+        // Session 1: Friday Diwali Poker Night (Total 10,000 in, 10,000 out)
+        const session1 = {
+          id: 'ses_sample_1',
+          title: 'Friday Diwali Poker Round 1',
+          date: '2026-10-06T20:30',
+          notes: '₹10/₹20 Blinds, ₹2000 initial buy-in',
+          players: [
+            { playerId: 'ply_Meet', buyIn: 2000, cashOut: 4200, net: 2200 },
+            { playerId: 'ply_Dhrish', buyIn: 2000, cashOut: 2800, net: 800 },
+            { playerId: 'ply_Shahil', buyIn: 4000, cashOut: 1200, net: -2800 }, // rebought once
+            { playerId: 'ply_Nisarg', buyIn: 2000, cashOut: 1800, net: -200 },
+            { playerId: 'ply_Het', buyIn: 2000, cashOut: 0, net: -2000 },
+            { playerId: 'ply_Nishit', buyIn: 2000, cashOut: 0, net: -2000 }
+          ],
+          totalBuyIn: 12000,
+          totalCashOut: 12000,
+          isBalanced: true,
+          createdAt: '2026-10-06T23:55:00.000Z'
+        };
+
+        // Session 2: Saturday High Rollers (Total 15,000 in, 15,000 out)
+        const session2 = {
+          id: 'ses_sample_2',
+          title: 'Saturday Teen Patti & Texas Hold\'em',
+          date: '2026-10-07T21:00',
+          notes: 'Pot Limit Omaha, ₹50 straddle',
+          players: [
+            { playerId: 'ply_Meet', buyIn: 3000, cashOut: 2000, net: -1000 },
+            { playerId: 'ply_Dhrish', buyIn: 3000, cashOut: 1500, net: -1500 },
+            { playerId: 'ply_Shahil', buyIn: 3000, cashOut: 5500, net: 2500 },
+            { playerId: 'ply_Nisarg', buyIn: 3000, cashOut: 4500, net: 1500 },
+            { playerId: 'ply_Het', buyIn: 3000, cashOut: 1500, net: -1500 },
+            { playerId: 'ply_Nishit', buyIn: 3000, cashOut: 1500, net: -1500 }
+          ],
+          totalBuyIn: 15000,
+          totalCashOut: 15000,
+          isBalanced: true,
+          createdAt: '2026-1０-０７T23:4０:００.０００Z'
+        };
+
+        // Payments: Kabir paid Vikram ₹1500 via UPI
+        const payment1 = {
+          id: 'pay_sample_1',
+          fromPlayerId: 'ply_kabir',
+          toPlayerId: 'ply_vikram',
+          amount: 1500,
+          date: '2026-10-08T11:30',
+          method: 'UPI',
+          note: 'GPay for Friday game',
+          createdAt: '2026-10-08T11:30:00.000Z'
+        };
+
+        state = {
+          config: { currency: '₹', chipRate: 1, theme: 'dark' },
+          players: samplePlayers,
+          sessions: [session2, session1],
+          payments: [payment1]
+        };
+
+        saveToStorage();
+        showToast('Sample game data loaded successfully!', 'success');
+        refreshUI();
+      };
+
+      // Helper to escape HTML tags
+      const escapeHtml = (str) => {
+        if (!str) return '';
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      };
+
+      // 17. INITIALIZATION
+      const init = () => {
+        loadFromStorage();
+        refreshUI();
+
+        // If no players exist on very first boot, preload sample data for delightful first-run UX
+        if (state.players.length === 0 && state.sessions.length === 0) {
+          loadSampleData();
+        }
+      };
+
+      // Run on DOM ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+      } else {
+        init();
+      }
+
+      // PUBLIC API EXPOSURE
+      return {
+        switchTab,
+        refreshUI,
+        setCurrency,
+        setPlayerFilter,
+
+        // Sessions
+        openNewSessionModal,
+        editSession,
+        closeSessionModal,
+        addPlayerRowToSession,
+        addAllActivePlayersToSession,
+        removePlayerRowFromSession,
+        updateSessionRowValue,
+        quickAddBuyIn,
+        validateSessionBalance,
+        saveSession,
+        deleteSession,
+        renderSessionsList,
+
+        // Payments
+        openNewPaymentModal,
+        prefillPaymentModal,
+        editPayment,
+        closePaymentModal,
+        onPaymentPlayerChange,
+        autoFillSettlementAmount,
+        setPaymentMethod,
+        savePayment,
+        deletePayment,
+        copySettlementPlan,
+
+        // Players
+        openPlayerModal,
+        editPlayer,
+        closePlayerModal,
+        savePlayer,
+        togglePlayerArchive,
+        renderPlayersList,
+
+        // Player Ledger
+        openPlayerLedger,
+        closePlayerLedgerModal,
+        copyPlayerStatement,
+
+        // Backups & Demo
+        exportDataJSON,
+        importDataJSON,
+        resetAllData,
+        loadSampleData
+      };
+    })();
+  </script>
+</body>
+</html>
